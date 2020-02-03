@@ -106,12 +106,12 @@ class Database(Functions):
         Example
         -------
 
-            @database.post_save
-            def my_definition(data):
-                if data:
-                    if a in data:
-                        data[a] = ''
-                    return data
+    @staticmethod
+    def _create_fields(data:dict, fields:list):
+        """A definition that creates new properties fields in the JSON schema"""
+        new_fields = {field.as_dict['name']: field.as_dict for field in fields}
+        data.update({'properties': new_fields})
+        return data
         """
         saved_data = self.save(data=func(self.db_data))
         return saved_data
