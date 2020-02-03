@@ -1,123 +1,90 @@
-# class Aggregate(type):
-#     def __new__(cls, name, bases, cls_dict):
-#         new_class = super().__new__(cls, name, bases, cls_dict)
-#         if name != "Math":
-#             # Create a base __init__ for each class in
-#             # order to take the field to aggregate
-#             def __init__(self, field): self.field = field
-#             setattr(new_class, '__init__', __init__)
+from django_no_sql.db.functions import F
+import math
+from collections import Counter
 
-#             f = F(new_class.field)
-#             resolved_values = f.resolve(data=[{'age': 15}, {'age': 16}])
-            
-#             # We have to find a way to pass the self of the 
-#             # subclass instead of the cls of the meta
-#             result = cls_dict['calculate'](cls, resolved_values)
-            
-            
-#             setattr(new_class, 'resolved_values', resolved_values)
-#             setattr(new_class, 'result', result)
-#         return new_class
+class Aggregate(type):
+    def __new__(cls, name, bases, cls_dict):
+        new_class = super().__new__(cls, name, bases, cls_dict)
+        if name != "Math":
+            pass
+        return new_class
 
-# class Math(metaclass=Aggregate):
-#     field = None
+class Math(metaclass=Aggregate):
+    function_type = None
 
-#     # def __str__(self):
-#     #     return str({f'__{self.function_type}': self.result})
+    def __init__(self, field):
+        f = F(field)
+        f.resolve(data=[{'age': 15}, {'age': 22}, {'age': 22}])
+        self.resolved_values = f.resolved_values
+        self.result = {f'{field}__{self.function_type}': self.calculate(f.resolved_values)}
 
-# class Sum(Math):
-#     function_type = 'sum'
+    def __str__(self):
+        return str(self.result)
 
-#     def caculate(self, values:list):
-#         return sum(values)
+class Sum(Math):
+    """Sums the values of the field"""
+    function_type = 'sum'
 
-# class Avg(Math):
-#     function_type = 'avg'
+    def calculate(self, values:list):
+        return sum(values)
 
-#     def calculate(self, values:list):
-#         return sum(values) / len(values)
+class Count(Math):
+    """Counts the values of the field"""
+    function_type = 'count'
 
+    def calculate(self, values:list):
+        return len(values)
 
+class Avg(Math):
+    """Average of the values of the field"""
+    function_type = 'avg'
 
-# class Aggregate:
-#     function_type = 'aggregate'
-#     functions = Functions()
+    def calculate(self, values:list):
+        return sum(values) / Count.calculate(self, values)
 
-#     def __init__(self, field):
-#         self.field = field
-#         self.result = None
-#         self.f = F(self.field)
+class Variance(Math):
+    function_type = 'variance'
 
-#     def resolve(self, data, function_type=None):
-#         """This is a specific resolver for the dataset in order
-#         to avoid calling data from the __init__
-#         """
-#         self.f.resolve(data=data)
+    def calculate(self, values:list):
+        total = 0
+        count = Count.calculate(self, values)
+        average = Avg.calculate(self, values)
+        for value in values:
+            total = total + (value - average)**2
+        return total / count
 
-#         if function_type:
-#             self.function_type = function_type
+class STDeviation(Math):
+    function_type = 'st_dev'
 
-#         if self.function_type == 'sum':
-#             self.result = sum(self.f.resolved_values)
+    def calculate(self, values:list):
+        v = Variance.calculate(self, values)
+        return math.sqrt(v)
 
-#         if self.function_type == 'avg':
-#             self.result = sum(self.f.resolved_values) / len(self.f)
+class Max(Math):
+    """Maximum value of the field"""
+    function_type = 'max'
 
-#         if self.function_type == 'min':
-#             self.result = min(self.f.resolved_values)
+    def calculate(self, values:list):
+        return max(values)
 
-#         if self.function_type == 'max':
-#             self.result = max(self.f.resolved_values)
+class Min(Math):
+    """Minimum value of the field"""
+    function_type = 'min'
 
-#         if self.function_type == 'variance':
-#             self.result = None
+    def calculate(self, values:list):
+        return min(values)
 
-#         return self.result
+class Mode(Math):
+    function_type = 'mode'
 
-#     def __repr__(self):
-#         return f'{self.__class__.__name__}({self.f.__class__.__name__}({self.field})={self.result})'
+    def calculate(self, values:list):
+        return Counter(values).most_common(1)
 
-#     def __str__(self):
-#         return str({f'{self.field}__{self.function_type}': self.result})
+class Spread(Math):
+    function_type = 'spread'
+    
+    def calculate(self, values:list):
+        return Max.calculate(self, values) - Min.calculate(self, values)
 
-#     def __unicode__(self):
-#         return self.__str__()
-
-# class Annotate(Aggregate):
-#     function_type = 'annotate'
-
-# class Avg(Aggregate):
-#     function_type = 'avg'
-
-# class WeightedAvg(Aggregate):
-#     def __init__(self, field, **weigth):
-#         pass
-
-# class Sum(Aggregate):
-#     function_type = 'sum'
-
-# class Variance(Aggregate):
-#     function_type = 'variance'
-
-#     def caculate(self, values:list=None):
-#         """Calculates the variance of each values"""
-#         average = Avg(self.field).result
-#         if not values:
-#             values = self.f.resolved_values
-#         return [round(value - average, 5) for value in values]
-
-# class STDeviation(Aggregate):
-#     pass
-
-# class Min(Aggregate):
-#     function_type = 'min'
-
-# class Max(Aggregate):
-#     function_type = 'max'
-
-
-# class OrderBy:
-#     data = None
-
-#     def __init__(self, descending=False):
-#         pass
+class OrderBy:
+    pass
