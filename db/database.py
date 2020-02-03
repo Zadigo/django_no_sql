@@ -12,22 +12,37 @@ from django_no_sql.db.queryset import QuerySet
 
 
 class Database(Functions):
-    """You can either create a database directly by using this class
-    or by subclassing the Models class.
+    """This class is the main entrypoint for creating and doing
+    actions on the database.
+
+    The database is considered as the .json file that contain the 
+    related schema, field properties and stored data.
 
     Description
     -----------
 
-        If you wish to create a database directly using this class,
-        here's the path to follow:
+        There are many ways to create a database. The first one is to
+        use the database instance as below:
 
-            database = Database(path_or_url='', fields=[], field_types=[])
+            database = Database(path_or_url=path_to_file)
 
-            path_or_url: is the path or the url of the schema/json that you wish to use
+        The second one is by subclassing the Model class:
 
-            fields: are the fields that you want to create if the database does not exist
+            class Celebrity(Model):
+                pass
 
-            types: are the types of each fields
+        If you decide to create the database inline, you need to provide
+        the fields, model name [...] exactly like you would for subclassing
+        the Model class.
+
+    Parameters
+    ----------
+
+        path_or_url: is the path or the url of the schema/json that you wish to use
+
+        fields: are the fields that you want to create if the database does not exist
+
+        types: are the types of each fields
 
             This process can be facilitated by using the Fields classes such as
             IntegerField, CharField etc.
