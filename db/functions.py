@@ -4,10 +4,15 @@ from itertools import dropwhile, filterfalse, takewhile
 from django_no_sql.db.errors import (FilterError, ItemExistError,
                                      KeyExistError, SubDictError)
 
-
 class Functions:
     """This class regroups all the given logic in order transform filters
-    into usable pieces of logic for filtering data withing your database.
+    into usable pieces of logic for filtering data within your database.
+
+    Example
+    -------
+
+        If we wanted to get items where age__gt=15 (or age > 15), the Functions
+        class would decompose the query [age]
     """
     db_data = dict()
     special_words = ['eq', 'gt', 'gte', 'lt', 'lte', 
@@ -25,6 +30,13 @@ class Functions:
     def last_item_id(self):
         """Get the last items' iD in the data
         """
+        if not isinstance(self.db_data, dict):
+            # In the case where the db_data is
+            # not the pure values from the database
+            # e.g. {1: {}} but values such as [{}, {}]
+            # then we need to return the length of the
+            # list of values
+            return len(self.db_data)
         return int(list(self.db_data.keys())[-1])
 
     @property
@@ -35,38 +47,41 @@ class Functions:
         """Transforms the data from the database into an array
         containing a series of dictionnaries.
 
+        Description
+        -----------
+
+            In order to simplify iteration over the top dictionnary,
+            storing each dict as an array does exactly that
+
         Example
         -------
 
-            {1: {a: b, c: d}
-            
-            By transforming the data, we can obtain the following:
-
-                [{a: b}, {c: d}]
+            {1: {a: b}, 2: {c: d}} becomes [{a: b}, {c: d}]
         """ 
         return [single_item for single_item in self.db_data.values()]
 
-    def simple_decompose(self, key):
-        """A simple defintion that separates a query in a list
+    def simple_decompose(self, expression):
+        """A definition that separates a query expression into
+        a list containing the keywords
 
-        Result
+        Example
         ------
 
-            If we have location__country then we can get:
-
-                [location, country]
+            location__country becomes [location, country]
         """
-        if '__' in key:
-            keys = key.split('__')
+        if '__' in expression:
+            expressions = expression.split('__')
         else:
             # If there's nothing, just
             # return the key as is - wrap the key
             # in a list to allow iteration
-            return [key]
-        return keys
-    
-    def decompose(self, **query):
-        """Decomposes a query from its parameters
+            return [expression]
+        return expressions
+
+    def decompose(self, **expressions):
+        """A more complex query expression separator that can
+        also separate logical comparision keywords e.g. gt, lt
+        and also separate multiple query expressions
 
         Description
         -----------
@@ -85,7 +100,7 @@ class Functions:
         Parameters
         ----------
 
-            query: is the keyword arguments
+            query: is the keyword arguments used to launch the search
 
         Result
         ------
@@ -95,7 +110,7 @@ class Functions:
         # Now we can seperate the keys from
         # the search values so that we have
         # two independent arrays from one another
-        for key, value in query.items():
+        for key, value in expressions.items():
             self.keys_dict.append(key)
 
             # NEW: In certain situations, the value
@@ -149,7 +164,7 @@ class Functions:
 
             {location: {country: USA}}
 
-            Suppose we have 'location__country' as a filter to
+            Suppose we have 'location__country' as an expression to
             get USA in the dict above. In which case, the definition
             will split the paramaters to get the specific value.
 
@@ -158,7 +173,8 @@ class Functions:
 
             f: a filter such as something__a or something__a__b
 
-            sub_dict: a subdictionnary that we want to filter
+            sub_dict: a subdictionnary of a database top dictionnary
+            that we want to filter
 
         Result
         ------
@@ -185,18 +201,16 @@ class Functions:
         # of five so that we can query the
         # dictionnary as deep as the user wants
 
-        # We also know that the final filter
+        # We also know that the final expression
         # (if there is one), can be a special
         # keyword that we need to do something with
         splitted_values = f.split('__', 5)
-        number_of_keys = len(splitted_values)
 
         # We iterate over each keyword
         # using the index. At each iteration,
         # we get +1 depth into the dict we
         # are trying to filter
-        for i in range(0, number_of_keys):
-            key = splitted_values[i]
+        for key in splitted_values:
             if key not in self.special_words:
                 # We know that it is a 
                 # dictionnary key to use in
@@ -213,23 +227,21 @@ class Functions:
                         # does not exist
                         raise KeyExistError(key, self.available_keys())
                 except KeyError:
-                    # If the key is not present,
-                    # we can raise an error here
                     if key not in self.special_words:
                         print('Available keys are: %s' % self.available_keys())
                         raise
             else:
-                # Pass the special keyword
-                # filter for the comparator
-                # that we will be calling below
+                # Pass the key to the special_keyword variable
+                # that we will be using for the comparator below
                 special_keyword = key
         # If everything went well,
         # we should have got the
         # value that we were looking for and
-        # return with that the special keyword
+        # combined with the special keyword
+        # as a tuple
         return sub_dict_copy, special_keyword
 
-    def comparator(self, a, b, special_keyword='exact'):
+    def comparator(self, a, b, special_keyword='exact', sub_dict:dict=None):
         """A definition used to compare two given values
         and returns True or False.
 
@@ -243,6 +255,17 @@ class Functions:
 
             By default, we always search for the exact value
         """
+        # FIXME: If the searched value is an F function,
+        # we have to resolve it and then pass the returned
+        # value as the searched value for comparision
+        if isinstance(b, F):
+            b.resolve(data=[sub_dict])
+            if len(b) == 1:
+                if b.operations_on_fields:
+                    b.operations_on_fields[0]
+                else:
+                    raise Exception()
+
         if special_keyword not in self.special_words:
             raise FilterError('The filter that you used is not implemented in the Functions class', special_keyword)
 
@@ -267,7 +290,7 @@ class Functions:
         if special_keyword == 'contains':
             return b in a
 
-    def iterator(self, data=None, **query):
+    def iterator(self, data=None, **expression):
         """This definition iterates over each dict from the data
         that we wish to filter and then triggers a logic in order
         to extract each element accordingly.
@@ -320,8 +343,8 @@ class Functions:
 
             And would be wrapped in the QuerySet class
         """
-        special_word = 'exact'
-        number_of_filters = self.decompose(**query)
+        special_keyword = 'exact'
+        number_of_filters = self.decompose(**expression)
 
         comparator_results = []
         filtered_items = []
@@ -339,8 +362,13 @@ class Functions:
         for item in data:
             for key in self.keys_dict:
                 searched_value = self.searched_values[position]
+
                 try:
                     no_underscore = item[key]
+
+                    # We need to reset the special keyword
+                    # to the default value which is eq or exact
+                    special_keyword = 'exact'
                     # There are cases where we might not have reached
                     # the full depth of a subdictionnary.
 
@@ -367,7 +395,7 @@ class Functions:
                     # the key from the special keyword
                     result = self.right_hand_filter(key, item)
                     with_underscore = result[0]
-                    special_word = result[1]
+                    special_keyword = result[1]
 
                 # Here we can get the parameter
                 # that resulted into a true
@@ -376,7 +404,7 @@ class Functions:
                 if number_of_filters == 1:
                     # This logic is specific to cases where
                     # we only have one filter
-                    return_value = self.comparator(g, searched_value, special_keyword=special_word)
+                    return_value = self.comparator(g, searched_value, special_keyword=special_keyword, sub_dict=item)
                     if return_value is True:
                         filtered_items.append(item)
                 elif number_of_filters > 1:
@@ -387,7 +415,7 @@ class Functions:
                     # The logic is to get all the booleans in an array
                     # and to apply an all() function that will determine
                     # if the item needs to be appended or not
-                    comparator_results.append(self.comparator(g, searched_value, special_keyword=special_word))
+                    comparator_results.append(self.comparator(g, searched_value, special_keyword=special_keyword))
 
                 position = position + 1
                 # In order for the cursor to always iterate
@@ -396,11 +424,17 @@ class Functions:
                 if position >= number_of_values_to_search:
                     position = 0
 
+
             # This is the section with the all() function that
             # determines if everythong is TRUE in order to append
             # the item in the array or not
             if number_of_filters > 1 and all(comparator_results):
                 filtered_items.append(item)
+            # We need to reset the comparator results
+            # variable in order to prevent it from 
+            # appending all the thruth/false values
+            # of all the tested data
+            comparator_results = []
         return filtered_items
 
     def get_by_id(self, reference_or_id:int):
@@ -410,8 +444,8 @@ class Functions:
         Description
         -----------
 
-        This special function was created in order to
-        prevent useless iteration over the datbase.
+            This special function was created in order to
+            prevent useless iteration over the datbase.
         """
         try:
             item = self.db_data[str(reference_or_id)]
@@ -424,8 +458,144 @@ class Functions:
         """From a list of ids, return a list of items that
         corresponds to the given ids
         """
-        data = self.db_data['data'].keys()
-        for all_id in all_ids:
-            for element_id in ids:
-                if all_id == element_id:
-                    yield self.db_data[element_id]
+        def iterate():
+            for i in ids:
+                for key, value in self.db_data.items():
+                    if i == int(key):
+                        yield value
+        return list(iterate())
+
+    def something_test(self):
+        return 'I did something here'
+
+class F:
+    """The F function resolves expressions for other function 
+    classes such as Avg, Sum etc
+
+    Description
+    -----------
+
+        It has a standalone query resolver that returns either a
+        specific value or a list of values after the field has
+        been resolved.
+
+        The F function is extremely useful for doing equality,
+        comparisions for example directly on a value or list of values.
+
+        In other words, the F function represents the value in itself
+        on which we can directly do comparisions.
+
+    Example
+    -------
+
+        Let's say we have F(age) where age is equals
+        to 24. We can do F(age) != 26 or F(age) == 25 -; or, if
+        age is a list it returns a list of booleans.
+
+    Parameters
+    ----------
+
+        Field: is a field that we which to resolve in a database value
+        or list of values
+
+    """
+    functions = Functions()
+    sign = 'eq'
+
+    def __init__(self, field):
+        self.field = field
+        self.resolved_values = []
+        self.operations_on_fields = []
+
+    def resolve(self, data:list=None, for_save=False):
+        """A function into which the database data can be passed
+        in order for the function to operate
+
+        Parameters
+        ----------
+
+            data: the data that contains the dictionnaries on which
+            we want to perform operations
+        """
+        copy_data = data.copy()
+        self.functions.db_data = data
+
+        # BUG: If self.field is None, we need to raise
+        # a specific error on that part otherwhise
+        # simple_decompose tries to find __ in None
+        # and raises and error
+        # if not self.field is None:
+        #     pass
+
+        for item in copy_data:
+            keys = self.functions.simple_decompose(self.field)
+            for key in keys:
+                try:
+                    item = item[key]
+                except KeyExistError:
+                    print(self.functions.available_keys())
+                    raise
+            self.resolved_values.append(item)
+
+            # If the modified value is directly for saving
+            # into the database, then we prepare the sequence
+            # if for_save:
+            #     pass
+
+        return self.resolved_values
+
+    def __str__(self):
+        # return str(self.resolved_values)
+        return str(self.__class__)
+
+    def __unicode__(self):
+        return self.__str__()
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.field})'
+    
+    def __eq__(self, value):
+        return [resolved_value == value for resolved_value in self.resolved_values]
+
+    def __ne__(self, value):
+        return [resolved_value != value for resolved_value in self.resolved_values]
+
+    def __gt__(self, value):
+        return [resolved_value > value for resolved_value in self.resolved_values]
+    
+    def __lt__(self, value):
+        return [resolved_value < value for resolved_value in self.resolved_values]
+
+    def __mul__(self, a):
+        if isinstance(a, F):
+            # BUG: When we get an F function and if the
+            # return values are two arrays of different
+            # sizes, we need to do something to prevent
+            # Python from raising an error
+
+            return self.resolved_values + a.resolved_values
+        return [value + a for value in self.resolved_values]
+
+    def __sub__(self, a):
+        if isinstance(a, F):
+            # __sub__ is evaluated before
+            # .resolve() by Python. We have
+            # to find a way to inverse that
+            # so that __sub__ works with the
+            # data instead of None
+            pass
+
+    def __add__(self, a):
+        """Addition of two F functions or an F function with an integer..."""
+        if isinstance(a, F):
+            # BUG: When we get an F function and if the
+            # return values are two arrays of different
+            # sizes, we need to do something to prevent
+            # Python from raising an error
+
+            return self.resolved_values + a.resolved_values
+        return [value + a for value in self.resolved_values]
+
+    def __len__(self):
+        return len(self.resolved_values)
+
