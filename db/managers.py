@@ -1,17 +1,38 @@
 from itertools import dropwhile, filterfalse
 
-from django_no_sql.db.functions import Functions
+from django_no_sql.db.functions import Functions, F
 from django_no_sql.db.queryset import Query, QuerySet
 
 
-class Manager(Functions):
+class Manager:
     """A class that regroups all the base functionnalities for
     interracting with the database
     """
-    def __init__(self, data=None):
-        self.db_data = data
+    def __init__(self, data=None, db_instance=None):
+        if data and not db_instance:
+            # If we do not have an instance,
+            # we ave to create a new Functions
+            # instance with the database data
+            # so that the manager can function
+            # correctly
+            self.db_data = data
+            functions = Functions()
+            functions.db_data = self.db_data
+            self.functions = functions
+
+        
+        elif not data and db_instance:
+            # When we pass an instance of the
+            # database, the db_data is already
+            # avaible for the manager
+            self.db_data = db_instance.db_data
+            self.functions = db_instance
+        
+        elif data and db_instance:
+            raise Exception('You provided both data to use and a Database instance. You should choose which one to use.')
 
     def insert(self, **kwargs):
+        """Creates a new record in the database"""
         pass
     
     def _all(self):
@@ -57,19 +78,19 @@ class Manager(Functions):
             new_record_to_return = {}
         return QuerySet(new_queryset)
 
-    def get(self, **query):
+    def get(self, **expression):
         """Get a single item from the database
         """
-        if 'id' in query:
+        if 'id' in expression:
             # If the user passes a single numeric
-            # item, then we can return on item
-            if not isinstance(query['id'], list):
-                return self.get_by_id(int(query['id']))
+            # item, then we can return one item
+            if not isinstance(expression['id'], list):
+                return self.get_by_id(int(expression['id']))
             else:
                 # Otherwise, if we get a list or a tuple,
                 # it means we need to return multiple items
                 pass
-        return self.iterator(**query)
+        return self.functions.iterator(**expression)
 
     def get_rand(self, n, **query):
         """Get a random amount of records based on n and
@@ -87,17 +108,17 @@ class Manager(Functions):
         if query:
             # When the user adds a filter to query the random
             # records, call the iterator
-            return self.iterator(data=random_records, **query)
+            return self.functions.iterator(data=random_records, **query)
         return random_records
 
     def get_or_create(self, **kwargs):
-        available_fields = self.available_keys()
+        available_fields = self.functions.available_keys()
         base_structure = dict()
         base_structure.update({available_field for available_field in available_fields})
 
-    def _filter(self, **query):
+    def _filter(self, **expression):
         """Retrieve data based on a list of filters"""
-        return QuerySet(self.iterator(**query))
+        return QuerySet(self.functions.iterator(**expression))
 
     def delete(self, **kwargs):
         pass
@@ -107,11 +128,12 @@ class Manager(Functions):
 
     def values(self):
         """Return the items of the database as an array of dictionnaries"""
-        return [data for data in self.db_data.values()]
+        # return [data for data in self.db_data.values()]
+        return self.functions.transform_data()
 
     @classmethod
     def limit(cls, n, **kwargs):
-        return cls.filter(**kwargs)[:n]
+        return cls._filter(**kwargs)[:n]
 
     def first(self):
         """Return the first value of the database"""
@@ -125,9 +147,5 @@ class Manager(Functions):
         """Return the number of items in the database"""
         return len(self.values())
 
-    @classmethod
-    def as_manager(cls, data=None):
-        """Instantiates the manager once again and
-        returns the class
-        """
-        return cls(data=data)
+    def something_test(self):
+        return self.functions.something_test()
