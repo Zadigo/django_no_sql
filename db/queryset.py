@@ -1,63 +1,19 @@
-"""This module regroups a set of wrapper classes that can
-be used implement additional functionalities to the records
-that are retrieved from the database.
-"""
-from itertools import dropwhile, takewhile, filterfalse
+from django_no_sql.db.functions import Functions
 
-class Query:
-    """A wrapper class for data retrieved from the database"""
-    def __init__(self, data):
-        self.data = data
+MAX_VALUES = 3
 
-    def resolve_field(self, field):
-        pass
+class QuerySet:
+    functions = Functions()
+
+    def __init__(self, db_instance=None, query=None):
+        if db_instance:
+            self.functions.db_data = db_instance.loaded_json_data
+        else:
+            self.functions.new_queryset = query
 
     def __repr__(self):
-        return f'{self.__class__.__name__}({self.data})'
+        return str(self.functions.db_data) 
 
-    def __str__(self):
-        return str(self.data)
-
-    def __unicode__(self):
-        return self.__str__()
-
-    def __getitem__(self, index):
-        return self.data[index]
-
-class QuerySet(Query):
-    """An extended wrapper for multiple records"""
-    def values(self):
-        """Return the items of the database as an array of dictionnaries"""
-        # If the data we receive is already a list,
-        # then we can just return the data without
-        # any iteration whatsoever
-        if isinstance(self.data, list):
-            return self.data
-        if isinstance(self.data, dict):
-            return [self.data]
-        return [data for data in self.data]
-
-    def limit(self, n):
-        """Return a list of items"""
-        return self.values()[:n]
-
-    def count(self):
-        """Return the number of items in the database"""
-        return len(self.values())
-
-    def last(self):
-        """Return the last item of the queryset"""
-        return self.values()[-1]
-
-    def first(self):
-        """Return the first item of the queryset"""
-        return self.values()[0]
-
-    def update(self, **kwargs):
-        pass
-
-    def update_or_create(self, **kwargs):
-        pass
-
-    def available_keys(self):
-        return self.data.keys()
+    def copy(self):
+        klass = self.__class__(query=self.functions.new_queryset)
+        return klass
