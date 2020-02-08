@@ -2,13 +2,10 @@ from django_no_sql.db.operators import F
 import unittest
 
 TESTDATA = [
-    {
-        "age": 15,
-        "attributes": {
-            "height": 187
-        }
-    }
+    {"age": 15, "attributes": {"height": 187}},
+    {"age": 19, "attributes": {"height": 159}},
 ]
+
 
 class TestF(unittest.TestCase):
     def setUp(self):
@@ -32,17 +29,39 @@ class TestF(unittest.TestCase):
         self.assertIsInstance(attributes, list)
         self.assertEqual(187, attributes[0])
 
-    def test_length(self):
-        self.age.resolve(data=TESTDATA)
-        self.assertEqual(self.age.__len__(), 1)
+    # def test_length(self):
+    #     self.age.resolve(data=TESTDATA)
+    #     self.assertEqual(self.age.__len__(), 2)
+    #     self.assertEqual(len(self.age), 2)
 
-    def test_add_one(self):
-        # Testing the fact of adding one
-        # to the F function instance:
-        # f = F(age) -> f + 1
-        self.age.resolve(data=TESTDATA)
-        new_value = self.age + 1
-        self.assertEqual(new_value, [16])
+    # def test_add_one(self):
+    #     # Testing the fact of adding one
+    #     # to the F function instance:
+    #     # f = F(age) -> f + 1
+    #     self.age.resolve(data=TESTDATA)
+    #     new_value = self.age + 1
+    #     self.assertEqual(new_value, [16])
+    #     # self.assertEqual(new_value, [16, 20])
+
+    #     # Adding two F functions together
+    #     # new_value = self.age + self.age
+    #     # self.assertEqual(new_value, 34)
+
+    def test_comparision(self):
+        # self.age.resolve(data=TESTDATA)
+        # FIXME: This is a false comparision. Asserts that
+        # the array exists but not that the functions in the
+        # array are actually greater than x value
+        # self.assertTrue(self.age > 17)
+        # print(self.age > 17)
+
+        # & operator
+        lea = F('age')
+        camille = F('age')
+        lea.resolve(data=TESTDATA)
+        camille.resolve(data=TESTDATA)
+        # self.assertTrue(lea & camille, True)
+        print(lea.resolved_values)
 
 if __name__ == "__main__":
     unittest.main()

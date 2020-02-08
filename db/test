@@ -1,0 +1,68 @@
+def pre_save(self, func=None):
+        """A decorator that performs a set of actions before
+        saving data to the database
+        """
+        return self.save(data=func(self.db_data))
+
+    def post_save(self, func=None):
+        """A decorator that performs a set of actions after
+        saving data to the database
+
+        Example
+        -------
+
+            @database.post_save
+            def my_definition(data):
+                if data:
+                    if a in data:
+                        data[a] = ''
+                    return data
+        """
+        saved_data = self.save(data=func(self.db_data))
+        return saved_data
+
+    def pre_delete(self):
+        pass
+
+    def post_delete(self):
+        pass
+
+    def migrate(self, **kwargs):
+        """Creates a new version of the database by changing the
+        modified_on and increasing the version of the schema
+        """
+        pass
+
+    def clean(self, **kwargs):
+        """This definition is called just before data is committed (or written)
+        to the database in order to prevent corruption.
+        """
+        pass
+
+@classmethod
+    def save(cls, data=None, **kwargs):
+        """A definition that commits changes to the database
+        by writting objects into it
+        """
+        # If data is None, then
+        # just return the cached_version
+        # of the database to the user
+        if data is None:
+            return ''
+
+        # If data is passed but is not a dict,
+        # then directly raise an exception here
+        if data and not isinstance(data, dict):
+            raise Exception()
+        else:
+            # cls.clean(data=data)
+
+            # Otherwise we can open the database in order
+            # to commit the new changes
+            with open(PATH, 'w', encoding='utf-8') as f:
+                data['$modified_on'] = cls.set_date()
+                json.dump(data , f, indent=4, sort_keys=True)
+            return cls
+
+    def refresh_from_database(self):
+        pass
