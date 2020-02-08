@@ -1,20 +1,16 @@
 from collections import OrderedDict, namedtuple
 from itertools import dropwhile, filterfalse, takewhile
 
+# from django_no_sql.db.queryset import QuerySet
 from django_no_sql.db.errors import (FilterError, ItemExistError,
-                                     KeyExistError, SubDictError)
+                                     KeyExistError, ResolutionError,
+                                     SubDictError)
+
 
 class Functions:
-    """This class regroups all the given logic in order transform filters
-    into usable pieces of logic for filtering data within your database.
+    db_data = []
+    new_queryset = []
 
-    Example
-    -------
-
-        If we wanted to get items where age__gt=15 (or age > 15), the Functions
-        class would decompose the query [age]
-    """
-    db_data = dict()
     special_words = ['eq', 'gt', 'gte', 'lt', 'lte', 
                         'ne', 'contains', 'icontains', 'exact', 'iexact']
     # A list that holds
@@ -26,57 +22,154 @@ class Functions:
     # against
     searched_values = []
 
-    @property
-    def last_item_id(self):
-        """Get the last items' iD in the data
-        """
-        if not isinstance(self.db_data, dict):
-            # In the case where the db_data is
-            # not the pure values from the database
-            # e.g. {1: {}} but values such as [{}, {}]
-            # then we need to return the length of the
-            # list of values
-            return len(self.db_data)
-        return int(list(self.db_data.keys())[-1])
-
-    @property
-    def auto_increment_last_id(self):
-        return self.last_item_id + 1
-
-    def transform_data(self, data:dict=None):
-        """Transforms the data from the database into an array
-        containing a series of dictionnaries.
+    def iterator(self, query=None, **expressions):
+        """This definition iterates over each data of the database records that
+         we wish to filter and then triggers a logic in order
+        to extract each element accordingly.
 
         Description
         -----------
 
-            In order to simplify iteration over the top dictionnary,
-            storing each dict as an array does exactly that
+            The iterator iterates by default over all the data of the
+            database.
 
-        Example
-        -------
+        Parameters
+        ----------
 
-            {1: {a: b}, 2: {c: d}} becomes [{a: b}, {c: d}]
-        """ 
-        return [single_item for single_item in self.db_data.values()]
+            query: is the filter that we wish to apply. For example name__contains
+            or location__country=USA
 
-    def simple_decompose(self, expression):
-        """A definition that separates a query expression into
-        a list containing the keywords
-
-        Example
+        Result
         ------
 
-            location__country becomes [location, country]
+            Suppose we have the following data with the constraint that name should be Kendall:
+
+                [
+                    {
+                        name: Kendall,
+                        location: {
+                            country: USA,
+                            city: Florida
+                        }
+                    },
+                    {
+                        name: Hailey,
+                        location: {
+                            country: USA,
+                            city: Florida
+                        }
+                    }
+                ]
+
+            The final result would be:
+
+                [
+                    {
+                        name: Kendall,
+                        location: {
+                            country: USA,
+                            city: Florida
+                        }
+                    }
+                ]
+
+            And would be wrapped in the QuerySet class
         """
-        if '__' in expression:
-            expressions = expression.split('__')
+        special_keyword = 'exact'
+        number_of_filters = self.decompose(**expressions)
+
+        comparator_results = []
+        filtered_items = []
+        number_of_values_to_search = len(self.searched_values)
+        position = 0
+
+        if self.new_queryset:
+            query = self.new_queryset
+        elif not self.new_queryset:
+            query = self.db_data
         else:
-            # If there's nothing, just
-            # return the key as is - wrap the key
-            # in a list to allow iteration
-            return [expression]
-        return expressions
+            query = query
+
+        # This section iterates over both
+        # arrays in order to filter the data
+        for item in query:
+            for key in self.keys_dict:
+                searched_value = self.searched_values[position]
+
+                try:
+                    no_underscore = item[key]
+
+                    # We need to reset the special keyword
+                    # to the default value which is eq or exact
+                    special_keyword = 'exact'
+                    # There are cases where we might not have reached
+                    # the full depth of a subdictionnary.
+
+                    # For example suppopse we have this:
+                    # {a: b, c: {d: e}} and the user queries
+                    # .get(c=something). In such a case, we
+                    # can see that the user did not query a
+                    # a specific key from the subdict (c).
+
+                    # This results in the return value
+                    # being a subdict.
+
+                    # Therefore, we just append the
+                    # subdict into the filtered items(?)
+                    # or raise an error telling the user
+                    # that the subdict needs to be queried(?)
+                    if isinstance(no_underscore, dict):
+                        # filtered_items.append(item[key])
+                        raise  SubDictError(key, item[key])
+                except KeyError:
+                    no_underscore = None
+                    # If the key contains a double
+                    # underscore we need to separate
+                    # the key from the special keyword
+                    result = self.right_hand_filter(key, item)
+                    with_underscore = result[0]
+                    special_keyword = result[1]
+
+                # Here we can get the parameter
+                # that resulted into a true
+                g = no_underscore or with_underscore
+
+                if number_of_filters == 1:
+                    # This logic is specific to cases where
+                    # we only have one filter
+                    return_value = self.comparator(g, searched_value, special_keyword=special_keyword, sub_dict=item)
+                    if return_value is True:
+                        filtered_items.append(item)
+                elif number_of_filters > 1:
+                    # This logic works for cases where we have
+                    # multiple filters. It's like applying an AND
+                    # operator in an SQL statement.
+
+                    # The logic is to get all the booleans in an array
+                    # and to apply an all() function that will determine
+                    # if the item needs to be appended or not
+                    comparator_results.append(self.comparator(g, searched_value, special_keyword=special_keyword))
+
+                position = position + 1
+                # In order for the cursor to always iterate
+                # between the 0 and the max amount of values
+                # that the user wants to search, we have to reset it
+                if position >= number_of_values_to_search:
+                    position = 0
+
+
+            # This is the section with the all() function that
+            # determines if everythong is TRUE in order to append
+            # the item in the array or not
+            if number_of_filters > 1 and all(comparator_results):
+                filtered_items.append(item)
+            # We need to reset the comparator results
+            # variable in order to prevent it from 
+            # appending all the thruth/false values
+            # of all the tested data
+            comparator_results = []
+        self.new_queryset = filtered_items
+        return filtered_items
 
     def decompose(self, **expressions):
         """A more complex query expression separator that can
@@ -123,36 +216,85 @@ class Functions:
             self.searched_values.append(value)
         return len(self.keys_dict)
 
-    def available_keys(self, check_key=None):
-        """Returns the list of available keys that can
-        be used to query the data
+    def simple_decompose(self, expression):
+        """A definition that separates a string type query 
+        expressions into a list containing the keywords
 
-        Parameters
-        ----------
+        Example
+        ------
 
-            check_key: pass a string to check if something
-            is present in the available keys        
+            location__country becomes [location, country]
         """
-        if self.db_data is None:
-            return []
-        # We can come from the premise
-        # that all the keys are structured
-        # the exact same manner -- in which
-        # case, by taking on sample from the
-        # data that we want to query, we can
-        # get the general keys' structure 
-        # of all the rest of the data
-        keys = [key for key in self.db_data.keys()]
+        if '__' in expression:
+            expressions = expression.split('__')
+        else:
+            # If there's nothing, just
+            # return the key as is - wrap the key
+            # in a list to allow iteration
+            return [expression]
+        return expressions
+    
+    def comparator(self, a, b, special_keyword='exact', sub_dict:dict=None):
+        """A definition used to compare two given values
+        and returns True or False.
 
-        if check_key:
-            if check_key in keys:
-                return True
-            else:
-                return False
+        Parameters:
 
-        # Now get the available keys
-        # from the sample dict
-        return keys
+            a: the reference value to compare
+
+            b: the value the user wants to compare to a
+
+            special_keyword: the filter word to use to make the comparision
+
+            Sub_dict: It corresponds to the sub dictionnary to use for functions
+            resolution ex. F, Q...
+
+            By default, we always search for the exact value
+        """
+        # FIXME: If the searched value is an F function,
+        # we have to resolve it and then pass the returned
+        # value as the searched value for comparision
+        if isinstance(b, F):
+            b.resolve(data=[sub_dict])
+            if len(b) == 1:
+                if b.operations_on_fields:
+                    b.operations_on_fields[0]
+                else:
+                    raise Exception()
+        
+        # BUG: It happens that the special
+        # keyword is set to None when a function
+        # call this definition. This raises an error...
+
+        # if special_keyword not in self.special_words:
+        #     raise FilterError('The filter that you used is not implemented in the Functions class', special_keyword)
+        
+        # We then have to be sure that if special_keyword
+        # is really None, to use the fallback "exact"
+        # comparision in order to keep the flow
+        if special_keyword is None:
+            return a == b
+         
+        if special_keyword == 'exact' or special_keyword == 'eq':
+            return a == b
+
+        if special_keyword == 'gt':
+            return a > b
+
+        if special_keyword == 'gte':
+            return a >= b
+
+        if special_keyword == 'lt':
+            return a < b
+
+        if special_keyword == 'lte':
+            return a <= b
+
+        if special_keyword == 'ne':
+            return a != b
+
+        if special_keyword == 'contains':
+            return b in a
 
     def right_hand_filter(self, f, sub_dict):
         """A special function that takes the extended
@@ -241,201 +383,59 @@ class Functions:
         # as a tuple
         return sub_dict_copy, special_keyword
 
-    def comparator(self, a, b, special_keyword='exact', sub_dict:dict=None):
-        """A definition used to compare two given values
-        and returns True or False.
-
-        Parameters:
-
-            a: the reference value to compare
-
-            b: the value the user wants to compare to a
-
-            special_keyword: the filter word to use to make the comparision
-
-            By default, we always search for the exact value
-        """
-        # FIXME: If the searched value is an F function,
-        # we have to resolve it and then pass the returned
-        # value as the searched value for comparision
-        if isinstance(b, F):
-            b.resolve(data=[sub_dict])
-            if len(b) == 1:
-                if b.operations_on_fields:
-                    b.operations_on_fields[0]
-                else:
-                    raise Exception()
-
-        if special_keyword not in self.special_words:
-            raise FilterError('The filter that you used is not implemented in the Functions class', special_keyword)
-
-        if special_keyword == 'exact' or special_keyword == 'eq':
-            return a == b
-
-        if special_keyword == 'gt':
-            return a > b
-
-        if special_keyword == 'gte':
-            return a >= b
-
-        if special_keyword == 'lt':
-            return a < b
-
-        if special_keyword == 'lte':
-            return a <= b
-
-        if special_keyword == 'ne':
-            return a != b
-
-        if special_keyword == 'contains':
-            return b in a
-
-    def iterator(self, data=None, **expression):
-        """This definition iterates over each dict from the data
-        that we wish to filter and then triggers a logic in order
-        to extract each element accordingly.
-
-        Description
-        -----------
-
-            The iterator iterates by default over all the data of the
-            database.
+    def available_keys(self, check_key=None):
+        """Returns the list of available keys that can
+        be used to query the data
 
         Parameters
         ----------
 
-            query: is the filter that we wish to apply. For example name__contains
-            or location__country=USA
-
-        Result
-        ------
-
-            Suppose we have the following data with the constraint that name should be Kendall:
-
-                [
-                    {
-                        name: Kendall,
-                        location: {
-                            country: USA,
-                            city: Florida
-                        }
-                    },
-                    {
-                        name: Hailey,
-                        location: {
-                            country: USA,
-                            city: Florida
-                        }
-                    }
-                ]
-
-            The final result would be:
-
-                [
-                    {
-                        name: Kendall,
-                        location: {
-                            country: USA,
-                            city: Florida
-                        }
-                    }
-                ]
-
-            And would be wrapped in the QuerySet class
+            check_key: pass a string to check if something
+            is present in the available keys        
         """
-        special_keyword = 'exact'
-        number_of_filters = self.decompose(**expression)
+        if self.db_data is None:
+            return []
+        # We can come from the premise
+        # that all the keys are structured
+        # the exact same manner -- in which
+        # case, by taking on sample from the
+        # data that we want to query, we can
+        # get the general keys' structure 
+        # of all the rest of the data
+        keys = [key for key in self.db_data.keys()]
 
-        comparator_results = []
-        filtered_items = []
-        number_of_values_to_search = len(self.searched_values)
-        position = 0
+        if check_key:
+            if check_key in keys:
+                return True
+            else:
+                return False
 
-        # By default, we query on all
-        # the data present in the database
-        # if data is None
-        if data is None:
-            data = self.transform_data()
+        # Now get the available keys
+        # from the sample dict
+        return keys
 
-        # This section iterates over both
-        # arrays in order to filter the data
-        for item in data:
-            for key in self.keys_dict:
-                searched_value = self.searched_values[position]
+    def last_id(self, increment=False):
+        """Returns the last iD of a queryset
+        
+        Parameter
+        ---------
+        
+            Increment: Add one to the last iD"""
+        return len(self.new_queryset) if self.has_new_queryset \
+                        else len(self.db_data)
 
-                try:
-                    no_underscore = item[key]
+    def simple_expressions(self, *expressions):
+        """Separates simple expressions such as query=value into
+        [query, value]"""
+        decomposed_expressions = []
+        for expression in expressions:
+            decomposed_expressions.append(expression.split('=', 1))
+        return decomposed_expressions
 
-                    # We need to reset the special keyword
-                    # to the default value which is eq or exact
-                    special_keyword = 'exact'
-                    # There are cases where we might not have reached
-                    # the full depth of a subdictionnary.
-
-                    # For example suppopse we have this:
-                    # {a: b, c: {d: e}} and the user queries
-                    # .get(c=something). In such a case, we
-                    # can see that the user did not query a
-                    # a specific key from the subdict (c).
-
-                    # This results in the return value
-                    # being a subdict.
-
-                    # Therefore, we just append the
-                    # subdict into the filtered items(?)
-                    # or raise an error telling the user
-                    # that the subdict needs to be queried(?)
-                    if isinstance(no_underscore, dict):
-                        # filtered_items.append(item[key])
-                        raise  SubDictError(key, item[key])
-                except KeyError:
-                    no_underscore = None
-                    # If the key contains a double
-                    # underscore we need to separate
-                    # the key from the special keyword
-                    result = self.right_hand_filter(key, item)
-                    with_underscore = result[0]
-                    special_keyword = result[1]
-
-                # Here we can get the parameter
-                # that resulted into a true
-                g = no_underscore or with_underscore
-
-                if number_of_filters == 1:
-                    # This logic is specific to cases where
-                    # we only have one filter
-                    return_value = self.comparator(g, searched_value, special_keyword=special_keyword, sub_dict=item)
-                    if return_value is True:
-                        filtered_items.append(item)
-                elif number_of_filters > 1:
-                    # This logic works for cases where we have
-                    # multiple filters. It's like applying an AND
-                    # operator in an SQL statement.
-
-                    # The logic is to get all the booleans in an array
-                    # and to apply an all() function that will determine
-                    # if the item needs to be appended or not
-                    comparator_results.append(self.comparator(g, searched_value, special_keyword=special_keyword))
-
-                position = position + 1
-                # In order for the cursor to always iterate
-                # between the 0 and the max amount of values
-                # that the user wants to search, we have to reset it
-                if position >= number_of_values_to_search:
-                    position = 0
-
-
-            # This is the section with the all() function that
-            # determines if everythong is TRUE in order to append
-            # the item in the array or not
-            if number_of_filters > 1 and all(comparator_results):
-                filtered_items.append(item)
-            # We need to reset the comparator results
-            # variable in order to prevent it from 
-            # appending all the thruth/false values
-            # of all the tested data
-            comparator_results = []
-        return filtered_items
+    @property
+    def has_new_queryset(self):
+        """Checks if new_queryset is populated"""
+        return True if self.new_queryset else False
 
     def get_by_id(self, reference_or_id:int):
         """Return an item from the database that corresponds exactly
@@ -448,9 +448,9 @@ class Functions:
             prevent useless iteration over the datbase.
         """
         try:
-            item = self.db_data[str(reference_or_id)]
+            item = self.db_data[reference_or_id]
         except:
-            raise ItemExistError(reference_or_id)
+            raise ItemExistError()
         else:
             return item
 
@@ -460,13 +460,10 @@ class Functions:
         """
         def iterate():
             for i in ids:
-                for key, value in self.db_data.items():
-                    if i == int(key):
+                for index, value in enumerate(self):
+                    if i == index:
                         yield value
         return list(iterate())
-
-    def something_test(self):
-        return 'I did something here'
 
 class F:
     """The F function resolves expressions for other function 
@@ -517,7 +514,12 @@ class F:
             data: the data that contains the dictionnaries on which
             we want to perform operations
         """
-        copy_data = data.copy()
+        try:
+            copy_data = data.copy()
+        except:
+            print('Resolve was called without no data to resolve.')
+            return []
+
         self.functions.db_data = data
 
         # BUG: If self.field is None, we need to raise
@@ -599,3 +601,28 @@ class F:
     def __len__(self):
         return len(self.resolved_values)
 
+class When(Functions):
+    query = [{'age': 28}, {'age': 25}, {'age': 28}]
+    # new_queryset = []
+    def __init__(self, if_condition, else_condition, **additional):
+        first_condition = self.simple_expressions(if_condition)
+        self.parse_expressions(first_condition, else_condition)
+
+    def parse_expressions(self, first_condition, else_condition):
+        for condition in first_condition:
+            for record in self.query:
+                try:
+                    is_match = record[condition[0]] == int(condition[1])
+                except KeyError:
+                    pass
+                else:
+                    if is_match:
+                        record[condition[0]] = else_condition
+                        self.new_queryset.append(record)
+        return self.new_queryset
+
+    # def __repr__(self):
+    #     return f'When(if={if_condition}, then={else_condition})'
+        
+# s = When('age=28', 16)
+# print(s)
