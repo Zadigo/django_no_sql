@@ -46,3 +46,15 @@ class FieldError(DatabaseError):
 
 class ValidatorError(DatabaseError):
     pass
+
+class ResolutionError(DatabaseError):
+    def __init__(self, value):
+        self.message = 'Could not resolve: %s' % value
+
+class PrimaryKeyError(DatabaseError):
+    def __init__(self, value):
+        self.message = 'The primary key is not a valid key. Should be an integer but got: %s' % value
+
+class ManagerLoadingError(DatabaseError):
+    def __init__(self):
+        self.message = 'You are trying to access the manager before having loaded the database. Call .load_database()'
