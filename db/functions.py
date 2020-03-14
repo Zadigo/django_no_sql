@@ -24,7 +24,7 @@ class Functions:
 
     def iterator(self, query, **expressions):
         """This definition iterates over each data of the database records that
-         we wish to filter and then triggers a logic in order
+        we wish to filter and then triggers a logic in order
         to extract each element accordingly.
 
         Description
