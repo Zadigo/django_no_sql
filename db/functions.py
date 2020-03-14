@@ -22,7 +22,7 @@ class Functions:
     # against
     searched_values = []
 
-    def iterator(self, query=None, **expressions):
+    def iterator(self, query, **expressions):
         """This definition iterates over each data of the database records that
          we wish to filter and then triggers a logic in order
         to extract each element accordingly.
