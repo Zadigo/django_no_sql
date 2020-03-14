@@ -85,7 +85,7 @@ class Functions:
 
         if self.new_queryset:
             query = self.new_queryset
-        elif not self.new_queryset:
+        elif not self.new_queryset and self.db_data:
             query = self.db_data
         else:
             query = query
