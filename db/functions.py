@@ -92,6 +92,12 @@ class Functions:
         else:
             query = query
 
+        if not query:
+            return []
+
+        if not isinstance(query, list):
+            raise errors.QueryTypeError(query)
+
         # This section iterates over both
         # arrays in order to filter the data
         for item in query:
