@@ -1,10 +1,9 @@
+from django_no_sql.db.aggregates import (Avg, Max, Min, Mode, Spread,
+                                         STDeviation, Sum, Variance)
 from django_no_sql.db.database import Database
-from django_no_sql.db.fields import (CharField, DateField, IntegerField,
-                                     URLField)
 from django_no_sql.db.functions import F, Functions
-from django_no_sql.db.models import Model
+from django_no_sql.db.models import fields, models
 from django_no_sql.db.operators import Operators
-from django_no_sql.db.aggregates import Sum, Avg, Variance, STDeviation, Min, Max, Mode, Spread
 from django_no_sql.db.queryset import QuerySet
 
 # TESTDATA = {
@@ -81,23 +80,23 @@ PATH = 'C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\database.json'
 
 
 
-class Image(Model):
-    name = CharField(145)
-    surname = CharField(135)
-    age = IntegerField(minimum=145)
+# class Image(models.Model):
+#     name = fields.CharField(145)
+#     surname = fields.CharField(135)
+#     age = fields.IntegerField(minimum=35)
 
+#     # class Meta:
+#     #     abstract = True
+#     #     plural = 'Celebritites'
+#     #     proxy = False
 
-    # class Meta:
-    #     abstract = True
-    #     plural = 'Celebritites'
-    #     proxy = False
-
-i = Image()
+# i = Image()
 # i.database.migrate()
 # s = i.manager.filter(name='Kendall')
-s = i.database  
+# s = i.database
+# print(s)
 
-print(s)
+# print(s)
 
 # import timeit
 # a = timeit.timeit()
@@ -121,3 +120,48 @@ print(s)
 # print(s)
 # print(s)
 
+# s = STDeviation('age')
+# s([{'age': 15}, {'age': 22}, {'age': 22}])
+# print(s)
+
+# o = Operators('age=15', 'age=20')
+
+
+# v = Variance('age')
+# v.resolve([{'age': 15}, {'age': 16}])
+# print(v.result)
+
+# print(AND('name=Kendall', 'age__eq=22', 'surname=Jenner'))
+# print(AND('name=Kendall', 'age__eq=22', 'surname=Jenner').resolve([{'name': 'Kendall'}, {'name': 'Kylie'}]))
+# print(XOR('value=google'))
+
+
+# s = Min('attributes__height')
+# w = s.resolve([{'age': 15, 'attributes': {'height': 167}}, {'age': '45', 'attributes': {'height': 187}}])
+# print(s)
+
+# f = F('age')
+# w = f.resolve([{'age': 15, 'attributes': {'height': 167}}, {'age': 45, 'attributes': {'height': 187}}])
+# w = f.resolve([{'age': 15, 'attributes': {'height': 167}}])
+# w = f.resolve([{'age': 15, 'attributes': {'height': 167}}], for_save=True)
+# z = f + 4
+# print(w)
+
+# e = AND('age__gt=15', 'age__lt=19')
+# print(e & e)
+# print(e.field_objects[0].sign)
+
+# a = Sum('age')
+# print(a)
+
+
+# o = Operators('age__location')
+# print(o.field_objects)
+
+
+# database = Database(path_or_url=PATH)
+# database.load_database()
+# s = database.manager.get(name__re=r'[Kk]en\w+')
+# e = database.manager.get(name__exact='Bella')
+# print(s)
+# print(e)

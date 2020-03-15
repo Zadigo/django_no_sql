@@ -1,4 +1,5 @@
 import unittest
+import os
 
 from django_no_sql.db.database import Database
 from django_no_sql.db.errors import DatabaseError
@@ -8,11 +9,10 @@ PATH = 'C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\database.json'
 class TestInlineCreation(unittest.TestCase):
     def setUp(self):
         self.database = Database(path_or_url=PATH)
-        
+    
     def test_create_database(self):
-        was_created = self.database.create('Celebrity', [])
-        self.assertFalse(was_created)
-        # self.assertTrue(was_created)
+        self.database.load_database()
+        self.assertTrue(os.path.exists(PATH))
 
     def test_load_database(self):
         all_data = self.database.load_database()
@@ -30,7 +30,7 @@ class TestInlineCreation(unittest.TestCase):
     def test_loading_manager(self):
         # The manager can only be loaded when the .load_datbase()
         # function is called
-        self.assertIsInstance(self.database.manager, Database)
+        self.database.manager
 
 # class TestDatabase(unittest.TestCase):
 #     def setUp(self):

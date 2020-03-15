@@ -66,3 +66,36 @@ def pre_save(self, func=None):
 
     def refresh_from_database(self):
         pass
+
+
+ # @classmethod
+    # def prepare_save(cls, data_to_save:dict=None):
+    #     """Prepares the database and the data for saving before
+    #     committing to the actual database
+
+    #     Description
+    #     -----------
+
+    #     """
+    #     key, values = data_to_save.items()
+    #     if not isinstance(key, int):
+    #         raise PrimaryKeyError(key)
+
+    #     errors = []
+    #     for key in values.keys():
+    #         if key not cls.field_names:
+    #             errors.append('%s is not a field of your model. Model fields are: ' % (key, ', '.join(cls.model_fields)))
+    #             raise FieldError(errors)
+
+    #     # Here we verify the type of the
+    #     # values that want to passed to
+    #     # the database in respect to the
+    #     # properties stored
+    #     validates = []
+    #     for field in cls.model_fields:
+    #         pass
+        
+    #     def commit(state=True):
+    #         return data_to_save
+
+    #     return commit
