@@ -1,8 +1,12 @@
-from django_no_sql.db.database import Database
-from django_no_sql.db.fields import Field
 import inspect
-from django_no_sql.db.managers import Manager
+
+from django.core.checks import Error, register
+
+from django_no_sql.db.database import Database
 from django_no_sql.db.errors import NullFieldError
+from django_no_sql.db.managers import Manager
+from django_no_sql.db.models.fields import Field
+
 
 class BaseModel(type):
     """Models are a way of structuring the logic of your database
@@ -17,7 +21,7 @@ class BaseModel(type):
     def __new__(cls, name, bases, cls_dict):
         new_class = super().__new__(cls, name, bases, cls_dict)
         if name != 'Model':
-            model_name = name
+            # model_name = name
             model_fields = []
             fields_to_create = []
             # Get each fields from the database in order
@@ -29,15 +33,6 @@ class BaseModel(type):
                         item['name'] = key
                         model_fields.append(field)
                         fields_to_create.append(item)
-
-            # Use a database instance to create
-            # all the models
-            # database = Database()
-            # database.model_name = model_name
-            # database.model_fields = model_fields
-            # database.create(model_name, fields_to_create)
-            # Implement the instance to all models
-            # setattr(new_class, 'database', database)
         return new_class
 
 class Model(metaclass=BaseModel):
@@ -46,9 +41,12 @@ class Model(metaclass=BaseModel):
         # in order to create a custom database
         # based on the data we received
         model_members = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        model_attributes = [model_member for model_member in model_members if not(model_member[0].startswith('__') and model_member[0].endswith('__'))]
+        model_attributes = [model_member for model_member in model_members \
+                                if not(model_member[0].startswith('__') \
+                                    and model_member[0].endswith('__'))]
         
-        database = Database()
+        _default_path = 'C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\google.json'
+        database = Database(path_or_url=_default_path)
         database.model_name = self.__class__.__name__
 
         field_names = []
@@ -66,14 +64,15 @@ class Model(metaclass=BaseModel):
                 field_names.append(model_attribute[0])
                 model_fields.append(model_attribute[1])
 
+
         database.field_names = field_names
         database.model_fields = self.check_fields(model_fields)
           
         # We can create the database here --;
         # each model would have their specific
         # model instance
-        database.create_from_model(database.model_name, database.model_fields)
-
+        database.create_from_model(database.model_name, database.model_fields, model_instance=self)
+        
         self.database = database
         self.manager = Manager(db_instance=self.database)
 
@@ -89,3 +88,6 @@ class Model(metaclass=BaseModel):
             raise TypeError('Field "%s" should not be None' % none_fields)
         
         return fields
+
+    # def get_absolute_url(self):
+    #     pass
