@@ -171,3 +171,23 @@ The function `.get()` returns a Query object.
 ### Greater than/Not greater than
 
 ## Operators
+
+# Extended functionnalities
+
+## Aggregates
+
+Aggregates regroup a list of functions that allow you to aggregate data and return the output. The __Aggregate__ class is the main entrypoint for all other classes that perform aggregation.
+
+### Sum
+
+### STDev
+
+### Avg
+
+### WeightedAvg
+
+### Count
+
+### Variance
+
+### Min and Max
