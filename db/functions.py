@@ -36,7 +36,9 @@ class Functions:
         Parameters
         ----------
 
-            query: is the filter that we wish to apply. For example name__contains
+            query: is an optionnal queryset on which we want to run expressions
+
+            expressions: are the filters that we wish to apply. For example name__contains
             or location__country=USA
 
         Result
