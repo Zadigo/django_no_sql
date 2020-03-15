@@ -128,7 +128,7 @@ class Functions:
                     # that the subdict needs to be queried(?)
                     if isinstance(no_underscore, dict):
                         # filtered_items.append(item[key])
-                        raise  SubDictError(key, item[key])
+                        raise  errors.SubDictError(key, item[key])
                 except KeyError:
                     no_underscore = None
                     # If the key contains a double
