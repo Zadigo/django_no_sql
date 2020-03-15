@@ -1,3 +1,7 @@
+"""This is the most simplistic version of the whole Database
+querying process for testing purposes
+"""
+
 import unittest
 
 # Observations:
