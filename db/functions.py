@@ -1,13 +1,23 @@
-from collections import OrderedDict, namedtuple
-from itertools import dropwhile, filterfalse, takewhile
+"""This module regroups all the important functiosn and classes
+that implements pieces of logic for querying and comparing data
+in the database. The main classes are:
 
-# from django_no_sql.db.queryset import QuerySet
-from django_no_sql.db.errors import (FilterError, ItemExistError,
-                                     KeyExistError, ResolutionError,
-                                     SubDictError)
+    - Functions
+
+    - When
+"""
+
+import datetime
+import re
+from collections import OrderedDict
+
+from django_no_sql.db import errors
+from django_no_sql.db.errors import FilterError, ResolutionError, SubDictError
 
 
 class Functions:
+    """This is the main class that implements all the logic behind
+    the querying and comparision for the data in the database"""
     db_data = []
     new_queryset = []
 
