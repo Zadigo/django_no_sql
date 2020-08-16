@@ -10,7 +10,6 @@ from django_no_sql.db import backends
 from django_no_sql.db import errors as django_no_sql_errors
 from django_no_sql.db.managers import Manager
 
-PATH = 'C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\database.json'
 
 class Database:
     """
@@ -62,7 +61,6 @@ class Database:
                 raise django_no_sql_errors.ManagerLoadingError()
         return name
 
-    @functools.lru_cache
     def load_database(self, key=None):
         """
         Opens the local database. This definition
