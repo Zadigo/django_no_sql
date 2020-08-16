@@ -160,7 +160,7 @@ When you wish to retrieve one item from your database, this is the function to u
 
 The function `.get()` returns a Query object.
 
-### Filter
+### Expressions
 
 ### Exlude & Include
 
@@ -176,9 +176,30 @@ The function `.get()` returns a Query object.
 
 ## Aggregates
 
-Aggregates regroup a list of functions that allow you to aggregate data and return the output. The __Aggregate__ class is the main entrypoint for all other classes that perform aggregation.
+Aggregates regroup a list of functions that allow you to aggregate data and return the result. The __Aggregate__ class is the main entrypoint for all other classes that perform aggregation.
+
+In the following examples, we will be using the same data structure:
+
+```
+[
+    {
+        name: Kendall,
+        age: 15
+    },
+    {
+        name: Hailey,
+        age: 21
+    },
+    {
+        name: Eugenie,
+        age: 25
+    }
+]
+```
 
 ### Sum
+
+As it name suggests, it sums a set of fields. For instance, if we wanted to sum the age from the fields above, you can do it in many different ways:
 
 ### STDev
 
@@ -191,3 +212,11 @@ Aggregates regroup a list of functions that allow you to aggregate data and retu
 ### Variance
 
 ### Min and Max
+
+# Special case of the F-Function
+
+Contrarily to Django, the F-Function (or F-Class) is __a special class that resolves a specific field or key from your data to its corresponding value.__ For example, if we had this data structure `[{name: Kendall]}]` and called `F('name')`, then the F-Function would resolve the field name `name` and return its value directly e.g. `[Kendall]`.
+
+Using this technique, we can then manipulate the raw value of a key in order to do something specific with it.
+
+The F-Function has it's own custom algorithm wich also extends the Functions' one.

@@ -1,21 +1,12 @@
-class Database:
-    @classmethod
-    def test(cls, func):
-        print(func(cls))
+import unittest
 
-@Database.test
-def pre_save(func):
-    def decorator(self, db_instance=None):
-        # func()
+database = Database(path_or_url=PATH)
+database.load_database()
+
+@database.before_save()
+def celebrity_change(instance):
+    print(instance)
+
+class TestSignals(unittest.TestCase):
+    def test_can_connect(self):
         pass
-    return decorator
-
-@pre_save
-def do_something():
-    print('Great')
-
-@pre_save
-def another_thing():
-    print('Awesome')
-
-d = Database()

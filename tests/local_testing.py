@@ -1,10 +1,11 @@
 from django_no_sql.db.aggregates import (Avg, Max, Min, Mode, Spread,
                                          STDeviation, Sum, Variance)
-from django_no_sql.db.database import Database
+from django_no_sql.db.database import Database, LinkedDatabase, async_database
 from django_no_sql.db.functions import F, Functions
 from django_no_sql.db.models import fields, models
 from django_no_sql.db.operators import Operators
 from django_no_sql.db.queryset import QuerySet
+from django_no_sql.db import backends
 
 # TESTDATA = {
 #     '1': {'name': 'Kendall', 'surname': 'Jenner', 'details': {'age': 25}},
@@ -52,20 +53,34 @@ PATH = 'C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\database.json'
 
 
 # f = F('details__age')
-# f.resolve(data=VALUES)
+# s = f.resolve(data=VALUES)
 # s = f.field
-# s = f.functions.last_item_id
+# s = f.functions.last_id()
 # s = f.resolved_values
 # s = f > 14
 # s = f == 24
 # s = f * 2
 # s = f - 6
+# print(s)
 
 
-# database = Database(path_or_url='C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\test.json')
-# database = Database()
-# database.override_on_create = True
-# database.create('Celebrity', [CharField(145, name='age')])
+database = Database(path_or_url='C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\test.json')
+# database.override_oncreate = True
+def age_validator(age):
+    if age == 22:
+        raise ValueError('Value should not be 22')
+    return age
+fields_to_create = {
+    'name': fields.CharField(45),
+    'surname': fields.CharField(45),
+    'age': fields.IntegerField(minimum=15, maximum=99, validators=[age_validator])
+}
+# fields_to_create = [
+#     fields.CharField(45),
+#     fields.CharField(45)
+# ]
+database.create_inline('Celebrity', fields_to_create=fields_to_create)
+print(database.loaded_json_data)
 # s = database.db_name
 # s = database.db_data
 # s = database.records
@@ -74,7 +89,7 @@ PATH = 'C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\database.json'
 # s = database.model_name
 # s = database.transform_data()
 # s = database.manager.values()
-# s = database.manager._filter(age__gt=F('age') - 5)
+# s = database.manager.filter(age__gt=F('age') - 5)
 # s = database.manager._all()
 # print(s)
 
@@ -108,16 +123,15 @@ PATH = 'C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\database.json'
 # b = timeit.timeit()
 # # print(image.database.field_names)
 
-# path = 'C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\database.json'
-# database = Database(path_or_url=path)
-# database.load_database()
+
+# Instance manager
 # s = database.manager.all()
 # s = database.manager.values()
 # s = database.manager.first()
 # s = database.manager.get(name='Kendall')
 # s = database.manager.get(age__eq=22)
 # s = database.manager.insert()
-# print(s)
+# s = database.manager.get(name__re=r'[Kk]en\w+')
 # print(s)
 
 # s = STDeviation('age')
@@ -159,9 +173,44 @@ PATH = 'C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\database.json'
 # print(o.field_objects)
 
 
-# database = Database(path_or_url=PATH)
-# database.load_database()
-# s = database.manager.get(name__re=r'[Kk]en\w+')
-# e = database.manager.get(name__exact='Bella')
-# print(s)
-# print(e)
+# queryset = QuerySet(query=VALUES)
+# queryset = QuerySet(db_instance=database)
+# s = queryset.functions.db_data
+# s = queryset.functions.new_queryset
+# s = queryset.copy()
+
+
+# Backends
+# data = backends.file_reader(PATH)
+# data_to_put = {
+#     "name": "Sophie",
+#     "surname": "Turner",
+#     "age": 27,
+#     "height": 176,
+#     "location": {
+#         "country": "ENG",
+#         "state": "Essex",
+#         "city": "London"
+#     }
+# }
+# data = backends.update_database(PATH, data_to_put)
+# print(data)
+
+# def age_validator(age):
+#     if age > 21:
+#         return age
+#     else:
+#         raise ValueError('Age should be greater than 13')
+
+# def test_validator(age):
+#     if age == 22:
+#         raise ValueError('Age should not be 22')
+
+# Constraints
+# value = database._check_constraint('age', 34)
+# value = database._check_constraint('name', 'Kendall Jenner Paradise Circus')
+# value = database._check_constraint('age', 22, [age_validator, test_validator])
+# .. Using Django validators
+# from django.core import validators as v
+# value = database._check_constraint('age', 22, validators=[v.MaxLengthValidator])
+# print(value)
