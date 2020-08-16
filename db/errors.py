@@ -11,6 +11,14 @@ class SchemaError(DatabaseError):
     def __init__(self, fields):
         super().__init__(f'The following fields "{", ".join(fields)}" are missing from your schema.')
 
+class SchemaUpdataError(SchemaError):
+    def __init__(self, message):
+        self.message = message
+
+class NoSchemaError(SchemaError):
+    def __init__(self):
+        self.message = 'We were not able to find any schema in you database.'
+
 class FilterError(DatabaseError):
     """Raises an error when a special keyword is erroneous"""
     def __init__(self, message, f):
@@ -58,3 +66,7 @@ class PrimaryKeyError(DatabaseError):
 class ManagerLoadingError(DatabaseError):
     def __init__(self):
         self.message = 'You are trying to access the manager before having loaded the database. Call .load_database()'
+
+class QueryTypeError(DatabaseError):
+    def __init__(self, element):
+        self.message = f'"{element}" needs to be an instance of a list'
