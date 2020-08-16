@@ -1,9 +1,10 @@
 {
-    "$created_on": 1576752125.817323,
-    "$id": "9d2f5512d1398e349489effbf7d6557ee5549b2da00c0e2bbf",
-    "$modified_on": 1576752412.638229,
     "$schema": "http://json-schema.org/draft-07/schema",
-    "$version": 7,
+    "$id": "9f6cfd5a2148a9ddb00200f23875b4dc88ea0728fec00ae82c",
+    "title": "Celebrity",
+    "created_on": 1580764492.088615,
+    "modified_on": "",
+    "version": 1,
     "data": {
         "1": {
             "name": "Kendall",
@@ -14,8 +15,7 @@
                 "country": "USA",
                 "state": "California",
                 "city": "Los Angeles"
-            },
-            "related": []
+            }
         },
         "2": {
             "name": "Hailey",
@@ -26,8 +26,7 @@
                 "country": "USA",
                 "state": "Arizona",
                 "city": "Tucson"
-            },
-            "related": []
+            }
         },
         "3": {
             "name": "Bella",
@@ -38,8 +37,7 @@
                 "country": "USA",
                 "state": "Washington",
                 "city": "Washington"
-            },
-            "related": []
+            }
         },
         "4": {
             "name": "Kylie",
@@ -50,8 +48,45 @@
                 "country": "USA",
                 "state": "California",
                 "city": "Los Angeles"
-            },
-            "related": [1]
+            }
         }
-    }
+    },
+    "properties": {
+        "name": {
+            "type": "string",
+            "maxLength": 24
+        },
+        "surname": {
+            "type": "string"
+        },
+        "age": {
+            "type": "integer",
+            "minimum": 15,
+            "maximum": 99
+        },
+        "height": {
+            "type": "integer",
+            "minimum": 165,
+            "maximum": 200
+        },
+        "location": {
+            "type": "object",
+            "properties": {
+                "country": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "state": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "city": {
+                    "type": "string",
+                    "maxLength": 50
+                }
+            }
+        }
+    },
+    "required": ["name", "surname", "age", "height", "country", "state", "city"],
+    "dependencies": {}
 }
