@@ -1,11 +1,12 @@
 from django_no_sql.db.aggregates import (Avg, Max, Min, Mode, Spread,
                                          STDeviation, Sum, Variance)
-from django_no_sql.db.database import Database, LinkedDatabase, async_database
-from django_no_sql.db.functions import F, Functions
+from django_no_sql.db.database import Database
+from django_no_sql.db.functions import F, Functions, Case, When
 from django_no_sql.db.models import fields, models
 from django_no_sql.db.operators import Operators
 from django_no_sql.db.queryset import QuerySet
 from django_no_sql.db import backends
+import timeit
 
 # TESTDATA = {
 #     '1': {'name': 'Kendall', 'surname': 'Jenner', 'details': {'age': 25}},
@@ -13,6 +14,8 @@ from django_no_sql.db import backends
 #     '3': {'name': 'Hailey', 'surname': 'Baldwin', 'details': {'age': 23}},
 #     '4': {'name': 'Selena', 'surname': 'Gomez', 'details': {'age': 21}},
 # }
+
+start = timeit.default_timer()
 
 VALUES = [
     {'name': 'Kendall', 'surname': 'Jenner', 'details': {'age': 25}},
@@ -24,7 +27,9 @@ VALUES = [
 PATH = 'C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\database.json'
 
 # database = Database(path_or_url=PATH)
-# database.load_database()
+database = Database(import_name=__file__)
+a = database.load_database()
+
 # data = database.manager.all().last()
 # data['name'] = 'test'
 # data.save()
@@ -64,23 +69,23 @@ PATH = 'C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\database.json'
 # print(s)
 
 
-database = Database(path_or_url='C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\test.json')
-# database.override_oncreate = True
-def age_validator(age):
-    if age == 22:
-        raise ValueError('Value should not be 22')
-    return age
-fields_to_create = {
-    'name': fields.CharField(45),
-    'surname': fields.CharField(45),
-    'age': fields.IntegerField(minimum=15, maximum=99, validators=[age_validator])
-}
-# fields_to_create = [
-#     fields.CharField(45),
-#     fields.CharField(45)
-# ]
-database.create_inline('Celebrity', fields_to_create=fields_to_create)
-print(database.loaded_json_data)
+# database = Database(path_or_url='C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\test.json')
+# # database.override_oncreate = True
+# def age_validator(age):
+#     if age == 22:
+#         raise ValueError('Value should not be 22')
+#     return age
+# fields_to_create = {
+#     'name': fields.CharField(45),
+#     'surname': fields.CharField(45),
+#     'age': fields.IntegerField(minimum=15, maximum=99, validators=[age_validator])
+# }
+# # fields_to_create = [
+# #     fields.CharField(45),
+# #     fields.CharField(45)
+# # ]
+# database.create_inline('Celebrity', fields_to_create=fields_to_create)
+# print(database.loaded_json_data)
 # s = database.db_name
 # s = database.db_data
 # s = database.records
@@ -214,3 +219,15 @@ print(database.loaded_json_data)
 # from django.core import validators as v
 # value = database._check_constraint('age', 22, validators=[v.MaxLengthValidator])
 # print(value)
+
+query = [{'name': 'Kendall', 'age': 28}, {'name': 'Hailey', 'age': 25}, {'name': 'Mariah', 'age': 28}, {'name': 'Pauline', 'age': 35}]
+condition1 = When(age__gte=23, then='old')
+condition2 = When(age__lt=23, then='young')
+# print(condition1(queryset=query))
+# print(condition2(queryset=query))
+# case = Case(condition1)
+# print(case(query))
+values = database.manager.annotate(age=Case(condition1, condition2))
+print(values)
+
+print('Finished in:', round(timeit.default_timer() - start, 4), 'seconds')

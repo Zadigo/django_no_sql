@@ -7,6 +7,7 @@ in the database. The main classes are:
     - When
 """
 
+import copy
 import datetime
 import re
 from collections import OrderedDict
@@ -89,31 +90,32 @@ class Functions:
                 ]
         """
         special_keyword = 'exact'
-        number_of_filters = self.decompose(**expressions)
+        number_of_filters = self.decompose(get_count=True, **expressions)
 
         comparator_results = []
         filtered_items = []
-        number_of_values_to_search = len(self.searched_values)
-        position = 0
+        # number_of_values_to_search = len(self.searched_values)
+        # position = 0
 
         if self.new_queryset:
-            query = self.new_queryset
+            items_to_iterate = self.new_queryset
         elif not self.new_queryset and self.db_data:
-            query = self.db_data
-        else:
-            query = query
+            items_to_iterate = self.db_data
+        
+        if query is not None:
+            items_to_iterate = query
 
-        if not query:
+        if not items_to_iterate:
             return []
 
-        if not isinstance(query, list):
+        if not isinstance(items_to_iterate, list):
             raise errors.QueryTypeError(query)
 
         # This section iterates over both
         # arrays in order to filter the data
-        for item in query:
-            for key in self.keys_dict:
-                searched_value = self.searched_values[position]
+        for item in items_to_iterate:
+            for index, key in enumerate(self.keys_dict):
+                searched_value = self.searched_values[index]
 
                 try:
                     no_underscore = item[key]
@@ -169,12 +171,12 @@ class Functions:
                     # if the item needs to be appended or not
                     comparator_results.append(self.comparator(g, searched_value, special_keyword=special_keyword))
 
-                position = position + 1
-                # In order for the cursor to always iterate
-                # between the 0 and the max amount of values
-                # that the user wants to search, we have to reset it
-                if position >= number_of_values_to_search:
-                    position = 0
+                # position = position + 1
+                # # In order for the cursor to always iterate
+                # # between the 0 and the max amount of values
+                # # that the user wants to search, we have to reset it
+                # if position >= number_of_values_to_search:
+                #     position = 0
 
 
             # This is the section with the all() function that
@@ -190,7 +192,7 @@ class Functions:
         self.new_queryset = filtered_items
         return filtered_items
 
-    def decompose(self, **expressions):
+    def decompose(self, get_count=False, **expressions):
         """A more complex query expression separator that can
         also separate logical comparision keywords e.g. gt, lt
         and also separate multiple query expressions
@@ -200,7 +202,7 @@ class Functions:
 
             Queries are dictionnaries composed of their keys and parameters:
 
-                {name: Kendall, location__country: USA}
+                { name: Kendall, location__country: USA }
             
             By decomposing the dict, we get two separate arrays, one containing
             only the keys, the other, only the searched values:
@@ -212,12 +214,14 @@ class Functions:
         Parameters
         ----------
 
-            query: is the keyword arguments used to launch the search
+            expressions: is the keyword arguments used to launch the search
 
         Result
         ------
 
-            decompose() returns the length of the keys_dict
+            { name: Kendall, location__country: USA }
+                becomes [[name, location__country], [Kendall, USA]]
+            
         """
         # Now we can seperate the keys from
         # the search values so that we have
@@ -233,7 +237,12 @@ class Functions:
             # from a set of records
 
             self.searched_values.append(value)
-        return len(self.keys_dict)
+        if get_count:
+            return len(self.keys_dict)
+        return [list(self.keys_dict), list(self.searched_values)]
+
+    def number_of_queries(self):
+        return
 
     def simple_decompose(self, expression):
         """A definition that separates a string type query 
@@ -484,8 +493,12 @@ class Functions:
                         else len(self.db_data)
 
     def simple_expressions(self, *expressions):
-        """Separates simple expressions such as query=value into
-        [query, value]"""
+        """Separates simple expressions
+        
+        Return
+        ------
+        
+            query=value becomes [query, value]"""
         decomposed_expressions = []
         for expression in expressions:
             decomposed_expressions.append(expression.split('=', 1))
@@ -537,6 +550,9 @@ class Functions:
                     if i == index:
                         yield value
         return list(iterate())
+
+    def copy(self):
+        return copy.copy(self)
 
 class F:
     """The F function resolves expressions for other function 
@@ -680,25 +696,49 @@ class F:
 
 
 class Case:
-    def __init__(self, *cases):
-        pass
+    def __init__(self, *cases, default=None):
+        self.cases = list(cases)
+        self.name = None
+
+    def __call__(self, queryset):
+        return self.resolve(queryset=queryset)
+
+    # def __repr__(self):
+    #     return f'<{self.__class__.__name__} {self}>'
+
+    def resolve(self, queryset=None):
+        resolved_conditions = []
+        for case in self.cases:
+            result = case(queryset=queryset)
+            if result:
+                resolved_conditions.append(result)
+        return resolved_conditions
+
 
 class When(Functions):
-    query = [{'age': 28}, {'age': 25}, {'age': 28}]
-    # new_queryset = []
-    def __init__(self, if_condition, else_condition, **additional):
-        first_condition = self.simple_expressions(if_condition)
-        self.parse_expressions(first_condition, else_condition)
+    resolved_queryset = OrderedDict()
 
-    def parse_expressions(self, first_condition, else_condition):
-        for condition in first_condition:
-            for record in self.query:
-                try:
-                    is_match = record[condition[0]] == int(condition[1])
-                except KeyError:
-                    pass
-                else:
-                    if is_match:
-                        record[condition[0]] = else_condition
-                        self.new_queryset.append(record)
-        return self.new_queryset
+    def __init__(self, condition=None, then=None, default=None, **expressions):
+        self.expressions = expressions
+        self.then = then
+        self.default = default
+
+    def __call__(self, db_instance=None, queryset=None):
+        # We have to pass an instance of the
+        # queryset 
+        query = db_instance or queryset
+        records = self.iterator(query=query, **self.expressions)
+        return self.resolve(queryset=records)
+
+    # def __repr__(self):
+    #     return f'<{self.__class__.__name__} {self}>'
+
+    def resolve(self, queryset=None):
+        new_records = []
+        for record in queryset:
+            for key, _ in record.items():
+                record['age'] = self.then
+            new_records.append(record)
+        # return self.resolved_queryset
+        return new_records
+

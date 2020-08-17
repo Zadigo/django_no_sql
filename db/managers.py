@@ -117,9 +117,23 @@ class Manager(QuerySet):
         copy.functions.new_queryset = new_queryset
         return copy
 
-    def annotate(self, alias=None):
+    def annotate(self, *functions, **aliases):
+        """
+        Annotates each record within a queryset with
+        a new field with the function that was passed
+        """
         copy = self.copy()
-        return copy
+        query = copy.functions.new_queryset if copy.functions.new_queryset else copy.functions.db_data
+        records = []
+        if functions:
+            for function in functions:
+                function(query)
+
+        if aliases:
+            for name, case in aliases.items():
+                case.name = name
+                records.append(case(query))
+        return records
 
     def aggregate(self, *args):
         copy = self.copy()

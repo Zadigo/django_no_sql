@@ -29,23 +29,22 @@ class TestF(unittest.TestCase):
         self.assertIsInstance(attributes, list)
         self.assertEqual(187, attributes[0])
 
-    # def test_length(self):
-    #     self.age.resolve(data=TESTDATA)
-    #     self.assertEqual(self.age.__len__(), 2)
-    #     self.assertEqual(len(self.age), 2)
+    def test_length(self):
+        self.age.resolve(data=TESTDATA)
+        self.assertEqual(self.age.__len__(), 2)
+        self.assertEqual(len(self.age), 2)
 
-    # def test_add_one(self):
-    #     # Testing the fact of adding one
-    #     # to the F function instance:
-    #     # f = F(age) -> f + 1
-    #     self.age.resolve(data=TESTDATA)
-    #     new_value = self.age + 1
-    #     self.assertEqual(new_value, [16])
-    #     # self.assertEqual(new_value, [16, 20])
+    def test_add_one(self):
+        # Testing the fact of adding one
+        # to the F function instance:
+        # f = F(age) -> f + 1
+        self.age.resolve(data=TESTDATA)
+        new_values = self.age + 1
+        self.assertEqual(new_values, [16, 20])
 
-    #     # Adding two F functions together
-    #     # new_value = self.age + self.age
-    #     # self.assertEqual(new_value, 34)
+        # Adding two F functions together
+        # new_value = self.age + self.age
+        # self.assertEqual(new_value, 34)
 
     def test_comparision(self):
         # self.age.resolve(data=TESTDATA)

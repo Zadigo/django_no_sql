@@ -2,7 +2,7 @@ from django_no_sql.db.functions import Functions
 import unittest
 from django_no_sql.db import errors
 
-TESTDATA = {
+TEST_DATA = [{
     'name': 'Kendall',
     'surname': 'Jenner',
     'age': 24,
@@ -11,27 +11,38 @@ TESTDATA = {
         'country': 'USA',
         'state': 'California',
         'city': 'Los Angeles'
-    },
-    'related': []
-}
-
-GOOD_TESTDATA = [{
-    'name': 'Kendall',
-    'surname': 'Jenner',
-    'age': 24,
-    'height': 178,
-    'location': {
-        'country': 'USA',
-        'state': 'California',
-        'city': 'Los Angeles'
-    },
-    'related': []
+    }
 }]
+
+MULTIPLE_TEST_DATA = [
+    {
+        'name': 'Kendall',
+        'surname': 'Jenner',
+        'age': 24,
+        'height': 178,
+        'location': {
+            'country': 'USA',
+            'state': 'California',
+            'city': 'Los Angeles'
+        }
+    },
+    {
+        'name': 'Kylie',
+        'surname': 'Jenner',
+        'age': 21,
+        'height': 170,
+        'location': {
+            'country': 'USA',
+            'state': 'California',
+            'city': 'Los Angeles'
+        }
+    }
+]
 
 class TestFunctions(unittest.TestCase):
     def setUp(self):
         self.functions = Functions()
-        self.functions.db_data = GOOD_TESTDATA
+        self.functions.db_data = TEST_DATA
 
     def test_available_keys(self):
         self.assertIsInstance(self.functions.available_keys(), list)
@@ -54,17 +65,23 @@ class TestFunctions(unittest.TestCase):
         result = self.functions.iterator(name='Kendall')
         self.assertIsInstance(result[0], dict)
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0], GOOD_TESTDATA[0])
+        self.assertEqual(result[0], TEST_DATA[0])
         self.assertEqual(result[0]['name'], 'Kendall')
 
-    def test_canot_treat_dict(self):
-        self.functions.db_data = TESTDATA
+    def test_cannot_handle_dict(self):
+        self.functions.db_data = {'name': 'Kendall'}
         # To prevent the iterator from breaking we should not
-        # be able to pass a dict instead of list of dicts.
-        # The iterator iterates over each dict to perform its
-        # logic and in that case, each item needs to be a dict
+        # be able to pass a dict but a list of dicts
         with self.assertRaises(errors.QueryTypeError):
             self.functions.iterator(name='Kendall')
+
+    def test_cannot_handle_empty_dict(self):
+        # When using empty dicts, for whatever
+        # reason this passes as opposed to the
+        # definition above which raises a QueryTypeError
+        self.functions.db_data = {}
+        with self.assertRaises(errors.QueryTypeError):
+            pass
 
     def test_right_hand(self):
         result = self.functions.right_hand_filter('name__exact', {'name': 'Kendall'})
@@ -97,11 +114,12 @@ class TestFunctions(unittest.TestCase):
     def test_reset_already_empty_queryset(self):
         self.assertFalse(self.functions.reset_new_queryset())
 
-    # @unittest.expectedFailure
-    # def test_get_by_id(self):
-    #     # We should get a deserved error when passing
-    #     # data that do not contain a pk/id in their fields
-    #     self.functions.get_by_id(1)
+    def test_query_accuracy(self):
+        expected = MULTIPLE_TEST_DATA[1]
+        self.assertEqual(self.functions.iterator(query=MULTIPLE_TEST_DATA, name='Kylie'), expected)
+    
+    def test_query_visually(self):
+        print(self.functions.iterator(query=MULTIPLE_TEST_DATA, name='Kylie'))
 
 if __name__ == "__main__":
     unittest.main()

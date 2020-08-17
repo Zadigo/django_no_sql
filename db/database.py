@@ -31,6 +31,10 @@ class Database:
     database_loaded = False
 
     model_fields = []
+    # This is a registry for the fields
+    # that a present in the database. This
+    # is constructed by using the properties
+    # section of the database
     field_names = []
 
     # This is the main registry for storing
@@ -40,14 +44,11 @@ class Database:
 
     _default_manager = None
 
-    def __init__(self, path_or_url=None):
+    def __init__(self, path_or_url=None, import_name=None):
         self.path_or_url = path_or_url
-
-        # NOTE: This section overrides the other path
-        # checking by raising an overall error when the
-        # .json file does not exist
-        # if not os.path.exists(self.path_or_url):
-        #     raise django_no_sql_errors.DatabaseError('The specified database does not exist')
+        if import_name:
+            dir_path = os.path.abspath(os.path.dirname(import_name))
+            self.import_name = dir_path
 
     def __getattr__(self, name):
         # When we try to use the manager
@@ -72,14 +73,10 @@ class Database:
         
             key: The main entrypoint to your database data
         """
-        # with open(self.path_or_url, 'r', encoding='utf-8') as db:
-        #     try:
-        #         raw_data = json.load(db)
-        #     except json.JSONDecodeError:
-        #         raise django_no_sql_errors.DatabaseError('The file that was opened is empty.')
-        #     if not raw_data:
-        #         raise django_no_sql_errors.NoSchemaError()
-        raw_data = backends.file_reader(self.path_or_url)
+        if self.path_or_url:
+            raw_data = backends.file_reader(path_or_url=self.path_or_url)
+        else:
+            raw_data = backends.file_reader(path_or_url=self.import_name, is_dir=True)
         self._check_schema(raw_data)
         self.database_loaded = True
         self.loaded_json_data = self.transform_data(raw_data, key=key)

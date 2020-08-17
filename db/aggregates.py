@@ -18,10 +18,10 @@ class Math(metaclass=Aggregate):
         self.resolved_values = []
 
     def __call__(self, db_instance):
-        f = F(self.field)
         # f.resolve(data=[{'age': 15}, {'age': 22}, {'age': 22}])
-        f.resolve(data=db_instance)
         # self.resolved_values = f.resolved_values
+        f = F(self.field)
+        f.resolve(data=db_instance)
         self.resolved_values = f.resolved_values
         return self.__str__()
 

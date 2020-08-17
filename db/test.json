@@ -1,0 +1,24 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "7336e2c7cea2b86290b881f4749bc1da738e39732ba44dfcb9",
+    "title": "Celebrity",
+    "created_on": 1597657607.797045,
+    "modified_on": "",
+    "version": 1,
+    "data": {},
+    "properties": {
+        "age": {
+            "type": "integer",
+            "null": false,
+            "empty": false,
+            "maximum": 99,
+            "minimum": 15
+        }
+    },
+    "required": [
+        "name",
+        "surname",
+        "age"
+    ],
+    "dependencies": {}
+}
