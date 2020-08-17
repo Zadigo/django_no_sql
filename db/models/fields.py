@@ -11,13 +11,15 @@ from django_no_sql.db.errors import FieldError, ValidatorError
 class Field:
     """This is the base field class for all the fields available
     to implement in a model"""
+
     default_error_messages = {
         'null': 'This field cannot be null',
         'blank': 'This field cannot be blank'
     }
-    def __init__(self, max_length=None, default=None, description=None, \
-                    name=None, verbose_name=None, validators:list=None, help_text=None,
-                        choices=(), editable=True, primary_key=False):
+
+    def __init__(self, max_length=None, default=None, description=None,
+                name=None, verbose_name=None, validators:list=None, help_text=None,
+                choices=(), nested_in=None, editable=True, primary_key=False):
         self.max_length = max_length
         self.default = default
         self.description = description
@@ -35,7 +37,12 @@ class Field:
         self.null = False
         self.empty = False
 
-        self.choices = None            
+        self.choices = None        
+
+        # This parameter is specific to fields
+        # that are nested in others such as:
+        # {location: {city: "", address: ""}}
+        self.nested_in = nested_in    
 
         self.base_format = {'type': None, 'null': self.null, 'empty': self.empty}
 
@@ -78,11 +85,15 @@ class Field:
     def cannot_be_null(self):
         """Check if the field can be null"""
         return True if self.null else False
+
+    @staticmethod
+    def cannot_be_null_and_empty(self):
+        return all([self.cannot_be_null, self.cannot_be_empty])
     
     def set_names(self, name):
         """Sets the name components for the fields"""
         self.name = name
-        if not self.verbose_name and name:
+        if not self.verbose_name:
             self.verbose_name = name.replace('_', ' ')
 
     def before_save(self):
@@ -246,14 +257,16 @@ class CharField(Field):
             return value
         return str(value)
 
+
 class TextField(CharField):
     """Field for lengthier text"""
     pass
 
+
 class URLField(CharField):
     """Field for storing URLS"""
     def __init__(self, name=None, verbose_name=None):
-        defaul_validators = [validators.URLValidator]
+        default_validators = [validators.URLValidator]
         super().__init__(200, name=name, verbose_name=verbose_name)
         self.base_format['type'] = 'url'
 
@@ -263,11 +276,13 @@ class URLField(CharField):
             **kwargs
         })
 
+
 class FilePathField(Field):
     """Base field for storing files"""
     def __init__(self):
         super().__init__()
         self.base_format = {'type': 'file'}
+
 
 class ArrayField(Field):
     """Field for storing array type data"""
@@ -279,6 +294,7 @@ class ArrayField(Field):
         if not isinstance(value, list):
             raise Exception()
         return value
+
 
 class DateField(Field):
     def __init__(self, auto_now=False, auto_now_add=False):
@@ -302,11 +318,14 @@ class DateField(Field):
         """Resolves a date before extracting it from the database"""
         return self.date_module.datetime.strptime(d, '%Y-%m-%d')
 
+
 class DateTimeField(DateField):
     pass
 
+
 class TimeField(Field):
     pass
+
 
 class BooleanField(Field):
     def __init__(self):
@@ -317,14 +336,20 @@ class BooleanField(Field):
             raise Exception()
         return boolean
 
+
 class ObjectField(Field):
     pass
 
+
 class AutoField(IntegerField):
-    pass
+    def __init__(self):
+        super().__init__(minimum=1)
+        self.base_format.update({'type': 'integer'})
+
 
 class BinaryField(Field):
     pass
+
 
 class CommaSeparatedField(Field):
     def __init__(self):
@@ -335,6 +360,7 @@ class CommaSeparatedField(Field):
         if not is_match:
             raise Exception()
         return s
+
 
 class SlugField(Field):
     def validate(self, s):
@@ -349,6 +375,7 @@ class SlugField(Field):
             **kwargs
         })
 
+
 class EmailField(Field):
     def formfield(self, **kwargs):
         return super().formfield(**{
@@ -356,5 +383,12 @@ class EmailField(Field):
             **kwargs
         })
 
-# f = IntegerField()
-# print(f)
+
+class ChoicesField(Field):
+    def __init__(self):
+        super().__init__()
+        self.base_format.update({'type': 'choices'})
+
+    def to_python(self):
+        pass
+# print(ChoicesField())

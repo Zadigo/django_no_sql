@@ -17,12 +17,15 @@ from django_no_sql.db.errors import FilterError, ResolutionError, SubDictError
 
 class Functions:
     """This is the main class that implements all the logic behind
-    the querying and comparision for the data in the database"""
+    querying and comparision for the data in the database"""
     db_data = []
     new_queryset = []
 
-    special_words = ['eq', 'gt', 'gte', 'lt', 'lte', 
-                        'ne', 'contains', 'icontains', 'exact', 'iexact']
+    special_words = ['eq', 'gt', 'gte', 'lt', 'lte', 'startswith', 'endswith',
+                        'ne', 'contains', 'icontains', 'exact', 'iexact', 're']
+
+    special_date_keywords = ['year', 'day', 'month']
+
     # A list that holds
     # all the filter keys
     keys_dict = []
@@ -32,7 +35,7 @@ class Functions:
     # against
     searched_values = []
 
-    def iterator(self, query, **expressions):
+    def iterator(self, query=None, **expressions):
         """This definition iterates over each data of the database records that
         we wish to filter and then triggers a logic in order
         to extract each element accordingly.
@@ -84,8 +87,6 @@ class Functions:
                         }
                     }
                 ]
-
-            And would be wrapped in the QuerySet class
         """
         special_keyword = 'exact'
         number_of_filters = self.decompose(**expressions)
@@ -280,6 +281,32 @@ class Functions:
                 else:
                     raise Exception()
         
+        # Intercept regex keyword
+        # for filtering
+        if special_keyword == 're':
+            get_match = re.match(b, a)
+            if get_match:
+                return True
+            else:
+                return False
+                    
+        # Intercept keywords that attempt to filter
+        # date elements: year, day, month, week...
+        # if special_keyword in self.special_date_keywords:
+        #     try:
+        #         # NOTE: For this to work, the initial date must follow
+        #         # the english format convention: year-month-day
+        #         date_to_compare = datetime.datetime.strptime(a, '%Y-%m-%d')
+        #     except Exception:
+        #         # The value to use is not a date or
+        #         # might not be a date. In which case,
+        #         # just return False as a soft escape
+        #         # error
+        #         return False
+        #     else:
+        #         if special_keyword == 'year':
+        #             return date_to_compare.year == b
+
         # BUG: It happens that the special
         # keyword is set to None when a function
         # call this definition. This raises an error...
@@ -314,9 +341,15 @@ class Functions:
         if special_keyword == 'contains':
             return b in a
 
-    def right_hand_filter(self, f, sub_dict):
-        """A special function that takes the extended
-        base filter in order to transform them into a logic
+        if special_keyword == 'startswith':
+            return a.startswith(b)
+
+        if special_keyword == 'endswith':
+            return a.endswith(b)
+
+    def right_hand_filter(self, expression, sub_dict):
+        """A special function that takes expressions
+        in order to transform them into a logic
         that can filter the data from the database
 
         Description
@@ -331,7 +364,7 @@ class Functions:
         Parameters
         ----------
 
-            f: a filter such as something__a or something__a__b
+            expression: An expression such as something__a or something__a__b
 
             sub_dict: a subdictionnary of a database top dictionnary
             that we want to filter
@@ -364,7 +397,7 @@ class Functions:
         # We also know that the final expression
         # (if there is one), can be a special
         # keyword that we need to do something with
-        splitted_values = f.split('__', 5)
+        splitted_values = expression.split('__', 5)
 
         # We iterate over each keyword
         # using the index. At each iteration,
@@ -385,10 +418,10 @@ class Functions:
                         # query anymore and we can raise an
                         # error since the additional depth
                         # does not exist
-                        raise KeyExistError(key, self.available_keys())
+                        raise errors.KeyExistError(key, self.available_keys())
                 except KeyError:
                     if key not in self.special_words:
-                        print('Available keys are: %s' % self.available_keys())
+                        print(f'Available keys are: {self.available_keys()}')
                         raise
             else:
                 # Pass the key to the special_keyword variable
@@ -413,23 +446,31 @@ class Functions:
         """
         if self.db_data is None:
             return []
+
+        db_data = self.db_data
+        
+        # db_data can be a list which can
+        # generate an error. In which case,
+        # try to obtain the first dict
+        if isinstance(db_data, list):
+            try:
+                db_data = db_data[0]
+            except:
+                return []
         # We can come from the premise
         # that all the keys are structured
-        # the exact same manner -- in which
-        # case, by taking on sample from the
+        # in the exact same manner -- in which
+        # case, by taking one sample from the
         # data that we want to query, we can
         # get the general keys' structure 
         # of all the rest of the data
-        keys = [key for key in self.db_data.keys()]
+        keys = [key for key in db_data.keys()]
 
         if check_key:
             if check_key in keys:
                 return True
             else:
                 return False
-
-        # Now get the available keys
-        # from the sample dict
         return keys
 
     def last_id(self, increment=False):
@@ -455,6 +496,20 @@ class Functions:
         """Checks if new_queryset is populated"""
         return True if self.new_queryset else False
 
+    def reset_new_queryset(self):
+        """Resets the new_queryset"""
+        # .. database.manager.get(...)
+        # .. database.manager.get(...)
+        # In this situation, the second
+        # query keeps in memory the new_queryset
+        # of the previous query. This method
+        # can be used to reset the new_queryset
+        # from scratch and prevent this
+        if self.has_new_queryset:
+            self.new_queryset = []
+            return True
+        return False
+
     def get_by_id(self, reference_or_id:int):
         """Return an item from the database that corresponds exactly
         to the given id.
@@ -468,7 +523,7 @@ class Functions:
         try:
             item = self.db_data[reference_or_id]
         except:
-            raise ItemExistError()
+            raise errors.ItemExistError()
         else:
             return item
 
@@ -478,7 +533,7 @@ class Functions:
         """
         def iterate():
             for i in ids:
-                for index, value in enumerate(self):
+                for index, value in enumerate(self.db_data):
                     if i == index:
                         yield value
         return list(iterate())
@@ -524,7 +579,11 @@ class F:
 
     def resolve(self, data:list=None, for_save=False):
         """A function into which the database data can be passed
-        in order for the function to operate
+        in order for the function to operate.
+
+        The resolve() definition result is dependent on the values that
+        are passed to be resolved. For example, if a single value is passed, 
+        then only only a single resolved value would be return.
 
         Parameters
         ----------
@@ -538,7 +597,7 @@ class F:
             print('Resolve was called without no data to resolve.')
             return []
 
-        self.functions.db_data = data
+        # self.functions.db_data = data
 
         # BUG: If self.field is None, we need to raise
         # a specific error on that part otherwhise
@@ -552,7 +611,7 @@ class F:
             for key in keys:
                 try:
                     item = item[key]
-                except KeyExistError:
+                except errors.KeyExistError:
                     print(self.functions.available_keys())
                     raise
             self.resolved_values.append(item)
@@ -619,6 +678,11 @@ class F:
     def __len__(self):
         return len(self.resolved_values)
 
+
+class Case:
+    def __init__(self, *cases):
+        pass
+
 class When(Functions):
     query = [{'age': 28}, {'age': 25}, {'age': 28}]
     # new_queryset = []
@@ -638,9 +702,3 @@ class When(Functions):
                         record[condition[0]] = else_condition
                         self.new_queryset.append(record)
         return self.new_queryset
-
-    # def __repr__(self):
-    #     return f'When(if={if_condition}, then={else_condition})'
-        
-# s = When('age=28', 16)
-# print(s)
