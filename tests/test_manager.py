@@ -73,6 +73,36 @@ class TestManager(unittest.TestCase):
         self.assertIn('height__max', total)
         self.assertEqual(total['height__max'], 178)
 
+    def test_filter_last(self):
+        record = self.db.manager.last()
+        expected = {
+            "name": "Kylie",
+            "surname": "Jenner",
+            "age": 22,
+            "height": 168,
+            "location": {
+                "country": "USA",
+                "state": "California",
+                "city": "Los Angeles"
+            }
+        }
+        self.assertEqual(expected, record)
+
+    def test_filter_first(self):
+        record = self.db.manager.first()
+        expected = {
+            "name": "Kendall",
+            "surname": "Jenner",
+            "age": 24,
+            "height": 178,
+            "location": {
+                "country": "USA",
+                "state": "California",
+                "city": "Los Angeles"
+            }
+        }
+        self.assertEqual(expected, record)
+
     def test_filter_annotate(self):
         pass
 

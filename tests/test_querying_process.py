@@ -28,6 +28,9 @@ EXPECTED_DATA = [
     {'name': 'Taylor'}
 ]
 
+class EmptyQueryset:
+    pass
+
 class Functions:
     db_data = None
     new_queryset = []
@@ -47,6 +50,14 @@ class QuerySet:
             self.functions.db_data = db_instance.loaded_json_data
         else:
             self.functions.new_queryset = query
+
+    def clone(self, **kwargs):
+        new_queryset = EmptyQueryset()
+        new_queryset.__dict__ = self.__class__.__dict__.copy()
+        new_queryset.query = self.functions.db_data
+        new_queryset.__name__ = f'NewQueryset from {self.__class__.__name__}'
+        new_queryset.functions = Functions()
+        return new_queryset
 
     def copy(self):
         klass = self.__class__(query=self.functions.new_queryset)

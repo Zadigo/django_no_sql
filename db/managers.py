@@ -37,16 +37,9 @@ class Manager(QuerySet):
 
     def clear_inner_queryset(self):
         """Clears the inner queryset of the Manager"""
-        if self.has_queryset:
+        if self.functions.has_queryset:
             self.functions.new_queryset = []
         return self
-
-    @property
-    def has_queryset(self):
-        """Checks if the Manager has a current queryset"""
-        if self.functions.new_queryset:
-            return True
-        return False
 
     def all(self):
         copy = self.copy()
@@ -76,13 +69,19 @@ class Manager(QuerySet):
     def first(self):
         """Return the first item of the queryset"""
         copy = self.copy()
-        copy.functions.new_queryset = copy.functions.new_queryset[:1]
+        if copy.functions.has_new_queryset:
+            copy.functions.new_queryset = copy.functions.new_queryset[:1]
+        else:
+            copy.functions.new_queryset = copy.functions.db_data[:1]
         return copy
 
     def last(self):
         """Return the last item of the queryset"""
         copy = self.copy()
-        copy.functions.new_queryset = copy.functions.new_queryset[-1]
+        if copy.functions.has_new_queryset:
+            copy.functions.new_queryset = copy.functions.new_queryset[-1]
+        else:
+            copy.functions.new_queryset = copy.functions.db_data[-1]
         return copy
 
     def exclude(self, *fields):

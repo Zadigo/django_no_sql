@@ -28,11 +28,28 @@ PATH = 'C:\\Users\\Pende\\Documents\\myapps\\django_no_sql\\db\\database.json'
 
 # database = Database(path_or_url=PATH)
 database = Database(import_name=__file__)
-a = database.load_database()
+raw_data = database.load_database()
 
-# data = database.manager.all().last()
-# data['name'] = 'test'
-# data.save()
+first_record = database.manager.first()
+# When calling last after a first queryset
+# was run, it returns the last item of the
+# already populated queryset whereas in this
+# configuration, it should return the last
+# item of the database data
+# FIX: The copy of the manager always
+# includes new queryset and never the
+# new db database when the new queryset
+# does not exist
+# FIX2: The copy includes the previous
+# version of the manager -> first()
+last_record = database.manager.last()
+
+all_values = database.manager.all()
+record = database.manager.get(name='Kendall')
+record = database.manager.get(age__eq=22)
+# s = database.manager.get(name__re=r'[Kk]en\w+')
+print(record)
+
 
 # func = Functions()
 # func.db_data = TESTDATA
@@ -129,15 +146,6 @@ a = database.load_database()
 # # print(image.database.field_names)
 
 
-# Instance manager
-# s = database.manager.all()
-# s = database.manager.values()
-# s = database.manager.first()
-# s = database.manager.get(name='Kendall')
-# s = database.manager.get(age__eq=22)
-# s = database.manager.insert()
-# s = database.manager.get(name__re=r'[Kk]en\w+')
-# print(s)
 
 # s = STDeviation('age')
 # s([{'age': 15}, {'age': 22}, {'age': 22}])
@@ -220,14 +228,14 @@ a = database.load_database()
 # value = database._check_constraint('age', 22, validators=[v.MaxLengthValidator])
 # print(value)
 
-query = [{'name': 'Kendall', 'age': 28}, {'name': 'Hailey', 'age': 25}, {'name': 'Mariah', 'age': 28}, {'name': 'Pauline', 'age': 35}]
-condition1 = When(age__gte=23, then='old')
-condition2 = When(age__lt=23, then='young')
-# print(condition1(queryset=query))
-# print(condition2(queryset=query))
-# case = Case(condition1)
-# print(case(query))
-values = database.manager.annotate(age=Case(condition1, condition2))
-print(values)
+# query = [{'name': 'Kendall', 'age': 28}, {'name': 'Hailey', 'age': 25}, {'name': 'Mariah', 'age': 28}, {'name': 'Pauline', 'age': 35}]
+# condition1 = When(age__gte=23, then='old')
+# condition2 = When(age__lt=23, then='young')
+# # print(condition1(queryset=query))
+# # print(condition2(queryset=query))
+# # case = Case(condition1)
+# # print(case(query))
+# values = database.manager.annotate(age=Case(condition1, condition2))
+# print(values)
 
-print('Finished in:', round(timeit.default_timer() - start, 4), 'seconds')
+# print('Finished in:', round(timeit.default_timer() - start, 4), 'seconds')

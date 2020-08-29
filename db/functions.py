@@ -506,8 +506,13 @@ class Functions:
 
     @property
     def has_new_queryset(self):
-        """Checks if new_queryset is populated"""
+        """Checks the new queryset property is populated"""
         return True if self.new_queryset else False
+
+    @property
+    def has_queryset(self):
+        """Checks whether the instance has a queryset new or not"""
+        return any([self.new_queryset, self.db_data])
 
     def reset_new_queryset(self):
         """Resets the new_queryset"""
