@@ -13,44 +13,6 @@ from urllib.parse import urlparse
 from requests import Request, Session
 
 from django_no_sql.db import errors as django_no_sql_errors
-from django_no_sql.db.decorators import database_cache, database_cache_for_web
-
-# @database_cache_for_web('this')
-# def create_connection(url, method, **extra_headers):
-#     session = Session()
-#     headers = {}
-#     headers = {**headers, **extra_headers}
-#     request = Request(method=method, url=url, headers=headers)
-#     prepared_request = session.prepare_request(request)
-#     try:
-#         response = session.send(prepared_request)
-#     except:
-#         pass
-#     else:
-#         if response.status_code == 200:
-#             return response
-
-#             def update_database(path_or_url, data_to_write, section='data'):
-#     with open(_check_path(path_or_url), 'r+', encoding='utf-8') as f:
-#         data = json.load(f)
-#         if not data:
-#             raise django_no_sql_errors.DatabaseError('The database you are '
-#                                                      'trying to load contains no schema')
-
-#         def update_schema(schema):
-#             print('schema')
-#             return data
-
-#         def update_data(data):
-#             print('data')
-#             return data
-
-#         if section == 'schema':
-#             new_data = update_schema(data_to_write)
-
-#         if section == 'data':
-#             new_data = update_data(data_to_write)
-#     return new_data
 
 def _search_for_database(path):
     base, _, files = list(os.walk(path))[0]
@@ -94,17 +56,23 @@ def _check_path(path_or_url):
 @functools.lru_cache
 def file_reader(path_or_url, mode='r', is_dir=False):
     """
-    Definition that opens, reads and loads the database
+    A function used to open a JSON database file
 
     Parameters
     ----------
 
-        - path_or_url: path or http/https url to the file to use
-        
-        - mode: choose a mode to read the file
-        
-        - is_dir: triggers a search in the file directory to find
-        the database file
+        path_or_url (str): path to the file
+        mode (str, optional): the default mode to open the file with. Defaults to 'r'.
+        is_dir (bool, optional): whether the path is a dir. Defaults to False.
+
+    Raises
+    ------
+
+        django_no_sql_errors.DatabaseError: [description]
+        django_no_sql_errors.SchemaError: [description]
+
+    Returns:
+        [type]: [description]
     """
     if is_dir:
         path_or_url = _search_for_database(path_or_url)

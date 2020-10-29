@@ -1,14 +1,23 @@
 from django_no_sql.db.functions import Functions
 
+
 MAX_VALUES = 3
+
 
 class EmptyQueryset:
     pass
 
+
 class QuerySet:
-    """
+    """ 
     A queryset represents of individual data retrieved
     from the database regrouped as a single item
+
+    Parameters
+    ----------
+
+        db_instance (obj, optionnal): a database instance. Defaults to None.
+        query (list, optionnal): a list of values. Defaults to None.
     """
     functions = Functions()
 

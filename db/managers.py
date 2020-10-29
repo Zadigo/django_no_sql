@@ -29,6 +29,15 @@ class Manager(QuerySet):
         else:
             super().__init__(query=query)
 
+    def __enter__(self):
+        return (
+            self.functions.new_queryset or 
+            self.functions.db_data
+        )
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        return False
+
     def __repr__(self):
         return f'{self.__class__.__name__}({self.functions.new_queryset})'
 
@@ -148,4 +157,5 @@ class Manager(QuerySet):
         # internlly e.g. from this class, we get a
         # the queryset + manager queryset both
         # together
-        pass
+        copy = self.copy()
+        return copy

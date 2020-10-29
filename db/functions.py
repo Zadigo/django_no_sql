@@ -1,12 +1,3 @@
-"""This module regroups all the important functiosn and classes
-that implements pieces of logic for querying and comparing data
-in the database. The main classes are:
-
-    - Functions
-
-    - When
-"""
-
 import copy
 import datetime
 import re
@@ -17,8 +8,10 @@ from django_no_sql.db.errors import FilterError, ResolutionError, SubDictError
 
 
 class Functions:
-    """This is the main class that implements all the logic behind
-    querying and comparision for the data in the database"""
+    """
+    This is the main class that implements all the logic for
+    querying and comparision of data in the database
+    """
     db_data = []
     new_queryset = []
 
@@ -36,27 +29,40 @@ class Functions:
     # against
     searched_values = []
 
+    @property
+    def has_new_queryset(self):
+        """Checks the new queryset property is populated"""
+        return True if self.new_queryset else False
+
+    @property
+    def has_queryset(self):
+        """Checks whether the instance has a queryset new or not"""
+        return any([self.new_queryset, self.db_data])
+
     def iterator(self, query=None, **expressions):
-        """This definition iterates over each data of the database records that
+        """
+        This definition iterates over each record that
         we wish to filter and then triggers a logic in order
-        to extract each element accordingly.
+        to extract items accordingly
 
         Description
         -----------
 
             The iterator iterates by default over all the data of the
-            database.
+            database
 
         Parameters
         ----------
 
-            query: is an optionnal queryset on which we want to run expressions
+            query (str, optionnal): is an optionnal queryset on which we want to run expressions
 
-            expressions: are the filters that we wish to apply. For example name__contains
-            or location__country=USA
+            expressions (str, optionnal): are the filters that we wish to apply. 
+                        For example name__contains or location__country=USA
 
-        Result
-        ------
+        Returns
+        -------
+
+            list: of the records that were filtered
 
             Suppose we have the following data with the constraint that name should be Kendall:
 
@@ -97,10 +103,11 @@ class Functions:
         # number_of_values_to_search = len(self.searched_values)
         # position = 0
 
-        if self.new_queryset:
-            items_to_iterate = self.new_queryset
-        elif not self.new_queryset and self.db_data:
-            items_to_iterate = self.db_data
+        items_to_iterate = self.new_queryset or self.db_data
+        # if self.new_queryset:
+        #     items_to_iterate = self.new_queryset
+        # elif not self.new_queryset and self.db_data:
+        #     items_to_iterate = self.db_data
         
         if query is not None:
             items_to_iterate = query
@@ -141,7 +148,7 @@ class Functions:
                     # that the subdict needs to be queried(?)
                     if isinstance(no_underscore, dict):
                         # filtered_items.append(item[key])
-                        raise  errors.SubDictError(key, item[key])
+                        raise errors.SubDictError(key, item[key])
                 except KeyError:
                     no_underscore = None
                     # If the key contains a double
@@ -180,7 +187,7 @@ class Functions:
 
 
             # This is the section with the all() function that
-            # determines if everythong is TRUE in order to append
+            # determines if everything is TRUE in order to append
             # the item in the array or not
             if number_of_filters > 1 and all(comparator_results):
                 filtered_items.append(item)
@@ -373,9 +380,9 @@ class Functions:
         Parameters
         ----------
 
-            expression: An expression such as something__a or something__a__b
+            expression (str): An expression such as something__a or something__a__b
 
-            sub_dict: a subdictionnary of a database top dictionnary
+            sub_dict (dict): a subdictionnary of a database top dictionnary
             that we want to filter
 
         Result
@@ -450,7 +457,7 @@ class Functions:
         Parameters
         ----------
 
-            check_key: pass a string to check if something
+            check_key (str, optionnal): pass a string to check if something
             is present in the available keys        
         """
         if self.db_data is None:
@@ -495,24 +502,15 @@ class Functions:
     def simple_expressions(self, *expressions):
         """Separates simple expressions
         
-        Return
-        ------
+        Returns
+        -------
         
-            query=value becomes [query, value]"""
+            list: query=value becomes [query, value]
+        """
         decomposed_expressions = []
         for expression in expressions:
             decomposed_expressions.append(expression.split('=', 1))
         return decomposed_expressions
-
-    @property
-    def has_new_queryset(self):
-        """Checks the new queryset property is populated"""
-        return True if self.new_queryset else False
-
-    @property
-    def has_queryset(self):
-        """Checks whether the instance has a queryset new or not"""
-        return any([self.new_queryset, self.db_data])
 
     def reset_new_queryset(self):
         """Resets the new_queryset"""
@@ -536,7 +534,7 @@ class Functions:
         -----------
 
             This special function was created in order to
-            prevent useless iteration over the datbase.
+            prevent useless iteration over the database.
         """
         try:
             item = self.db_data[reference_or_id]
@@ -586,7 +584,7 @@ class F:
     Parameters
     ----------
 
-        Field: is a field that we which to resolve in a database value
+        Field (str): is a field that we which to resolve in a database value
         or list of values
 
     """
@@ -746,4 +744,3 @@ class When(Functions):
             new_records.append(record)
         # return self.resolved_queryset
         return new_records
-

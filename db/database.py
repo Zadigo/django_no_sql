@@ -15,6 +15,23 @@ class Database:
     """
     Main representation and entrypoint for a
     JSON database file
+
+    Raises
+    ------
+
+        a: [description]
+        django_no_sql_errors.ManagerLoadingError: [description]
+        django_no_sql_errors.DatabaseError: [description]
+        ImportError: [description]
+        Exception: [description]
+        django_no_sql_errors.FieldError: [description]
+        somekind: [description]
+        TypeError: [description]
+
+    Returns
+    -------
+
+        obj: the JSON data wrapped in a database instance
     """
 
     data_types = {
@@ -50,6 +67,12 @@ class Database:
             dir_path = os.path.abspath(os.path.dirname(import_name))
             self.import_name = dir_path
 
+    def __repr__(self):
+        return f'<{self.__class__.__name__}(loaded={self.database_loaded})>'
+
+    def __str__(self):
+        return str(self.loaded_json_data)
+
     def __getattr__(self, name):
         # When we try to use the manager
         # without loading the database
@@ -71,7 +94,7 @@ class Database:
         Parameters
         ----------
         
-            key: The main entrypoint to your database data
+            key (str): The main entrypoint to your database data
         """
         if self.path_or_url:
             raw_data = backends.file_reader(path_or_url=self.path_or_url)
@@ -91,9 +114,9 @@ class Database:
         Properties
         ----------
 
-            Data_to_use: The data of the current JSON file to
-            use to initialize the Database, the Manager and 
-            its QuerySet
+            data_to_use: The data of the current JSON file to
+                use to initialize the Database, the Manager and 
+                its QuerySet
         """
         field_errors = []
 
@@ -149,7 +172,7 @@ class Database:
 
             # DEPRECATED: This will be replaced with
             # the import module technique above
-            self.manager = Manager(db_instance=self)
+            self._default_manager = Manager(db_instance=self)
     
         return True
     
@@ -408,17 +431,3 @@ class Database:
             print('Do something with the signal here')
             # return connect
         return signal
-
-class LinkedDatabase(Database):
-    """Create databases that are linked to one another
-    by a one-to-many or one-to-one links"""
-    inner_link = 'one-to-many'
-    related_databases = []
-    # This is the many dictionnary that
-    # remembers the links between each
-    # database e.g. {a: {type: onetomany, databases: [b, c]}}
-    database_links = {}
-    prefetch = True
-
-    def load_database(self, keys:list=None):
-        pass
